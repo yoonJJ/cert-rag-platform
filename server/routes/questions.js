@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { prisma } from '../db.js';
 import { generateQuestions, searchChunksDebug } from '../services/rag.js';
+import { getLlmSettingsSnapshot } from '../services/llm.js';
 
 export const questionsRouter = Router();
 
@@ -56,6 +57,17 @@ questionsRouter.post('/questions/generate', async (req, res) => {
     res.json({ questions });
   } catch (e) {
     console.error(e);
+    const llm = getLlmSettingsSnapshot();
+    if (e?.status === 404) {
+      return res.status(404).json({
+        error: `현재 모델 호출 경로를 찾지 못했습니다(404). 모델/프로바이더 설정을 확인해 주세요: ${llm.label} (${llm.provider}/${llm.apiModel}).`,
+      });
+    }
+    if (e?.status === 429) {
+      return res.status(429).json({
+        error: `요청 한도(429)를 초과했습니다. 현재 모델: ${llm.label} (${llm.provider}/${llm.apiModel}). 잠시 후 다시 시도하거나 다른 모델로 변경해 주세요.`,
+      });
+    }
     res.status(500).json({ error: e.message || '문제 생성 실패' });
   }
 });

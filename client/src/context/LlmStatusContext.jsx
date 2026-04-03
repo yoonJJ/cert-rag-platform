@@ -10,8 +10,8 @@ export function LlmStatusProvider({ children }) {
   const [label, setLabel] = useState('');
   const [provider, setProvider] = useState('ollama');
   const [options, setOptions] = useState([]);
-  const [hasOpenAiKey, setHasOpenAiKey] = useState(false);
-  const [openaiKeyHint, setOpenaiKeyHint] = useState(null);
+  const [keyStatus, setKeyStatus] = useState({ openai: false, gemini: false, claude: false });
+  const [keyHints, setKeyHints] = useState({ openai: null, gemini: null, claude: null });
   const [llmOk, setLlmOk] = useState(false);
   const [llmState, setLlmState] = useState('down');
   const [loading, setLoading] = useState(true);
@@ -29,8 +29,8 @@ export function LlmStatusProvider({ children }) {
       setLabel(data.label || data.apiModel || '');
       setProvider(data.provider || 'ollama');
       setOptions(Array.isArray(data.options) ? data.options : []);
-      setHasOpenAiKey(!!data.hasOpenAiKey);
-      setOpenaiKeyHint(data.openaiKeyHint ?? null);
+      setKeyStatus(data.keyStatus || { openai: false, gemini: false, claude: false });
+      setKeyHints(data.keyHints || { openai: null, gemini: null, claude: null });
       setLlmOk(!!data.llmOk);
       setLlmState(data.llmState || 'down');
       setError('');
@@ -50,34 +50,8 @@ export function LlmStatusProvider({ children }) {
   }, [refresh]);
 
   const value = useMemo(
-    () => ({
-      model,
-      apiModel,
-      label,
-      provider,
-      options,
-      hasOpenAiKey,
-      openaiKeyHint,
-      llmOk,
-      llmState,
-      loading,
-      error,
-      refresh,
-    }),
-    [
-      model,
-      apiModel,
-      label,
-      provider,
-      options,
-      hasOpenAiKey,
-      openaiKeyHint,
-      llmOk,
-      llmState,
-      loading,
-      error,
-      refresh,
-    ],
+    () => ({ model, apiModel, label, provider, options, keyStatus, keyHints, llmOk, llmState, loading, error, refresh }),
+    [model, apiModel, label, provider, options, keyStatus, keyHints, llmOk, llmState, loading, error, refresh],
   );
 
   return <LlmStatusContext.Provider value={value}>{children}</LlmStatusContext.Provider>;
@@ -85,8 +59,6 @@ export function LlmStatusProvider({ children }) {
 
 export function useLlmStatus() {
   const ctx = useContext(LlmStatusContext);
-  if (!ctx) {
-    throw new Error('useLlmStatus는 LlmStatusProvider 안에서만 사용할 수 있습니다.');
-  }
+  if (!ctx) throw new Error('useLlmStatus는 LlmStatusProvider 안에서만 사용할 수 있습니다.');
   return ctx;
 }

@@ -2,9 +2,7 @@ import { Router } from 'express';
 import {
   getChatOptions,
   setChatModel,
-  setOpenaiApiKey,
-  hasOpenaiApiKey,
-  getOpenaiKeyHint,
+  setProviderApiKey,
   getLlmSettingsSnapshot,
   checkLLMHealth,
 } from '../services/llm.js';
@@ -21,8 +19,8 @@ settingsRouter.get('/settings/llm', async (_req, res) => {
       label: snap.label,
       provider: snap.provider,
       options: getChatOptions(),
-      hasOpenAiKey: hasOpenaiApiKey(),
-      openaiKeyHint: getOpenaiKeyHint(),
+      keyStatus: snap.keyStatus,
+      keyHints: snap.keyHints,
       llmOk: health.ok,
       llmState: health.state,
     });
@@ -33,10 +31,12 @@ settingsRouter.get('/settings/llm', async (_req, res) => {
 
 settingsRouter.put('/settings/llm', (req, res) => {
   try {
-    const { model, openaiApiKey } = req.body || {};
+    const { model, providerApiKey, keyProvider } = req.body || {};
 
-    if (openaiApiKey !== undefined) {
-      setOpenaiApiKey(openaiApiKey);
+    if (providerApiKey !== undefined) {
+      const target = String(keyProvider || '').trim();
+      if (!target) throw new Error('keyProvider 값이 필요합니다.');
+      setProviderApiKey(target, providerApiKey);
     }
 
     if (model !== undefined && model !== null && String(model).trim() !== '') {
@@ -49,8 +49,8 @@ settingsRouter.put('/settings/llm', (req, res) => {
       apiModel: snap.apiModel,
       label: snap.label,
       provider: snap.provider,
-      hasOpenAiKey: hasOpenaiApiKey(),
-      openaiKeyHint: getOpenaiKeyHint(),
+      keyStatus: snap.keyStatus,
+      keyHints: snap.keyHints,
     });
   } catch (e) {
     res.status(400).json({ error: e instanceof Error ? e.message : 'invalid settings' });

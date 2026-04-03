@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getChatClient, getChatModel } from '../services/llm.js';
+import { createChatCompletionStream } from '../services/llm.js';
 import { retrieve } from '../services/rag.js';
 
 export const tutorRouter = Router();
@@ -15,8 +15,7 @@ tutorRouter.get('/tutor', async (req, res) => {
   try {
     const context = await retrieve(topic || '', 5);
 
-    const stream = await getChatClient().chat.completions.create({
-      model: getChatModel(),
+    const stream = await createChatCompletionStream({
       messages: [
         {
           role: 'system',
@@ -27,7 +26,6 @@ tutorRouter.get('/tutor', async (req, res) => {
           content: `문제: ${question}\n내가 고른 답: ${wrongAnswer}\n정답: ${correctAnswer}\n\n왜 틀렸는지 설명해줘.`,
         },
       ],
-      stream: true,
     });
 
     for await (const chunk of stream) {

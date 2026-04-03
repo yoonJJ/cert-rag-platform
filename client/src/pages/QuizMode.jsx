@@ -10,6 +10,9 @@ export default function QuizMode() {
   const [sources, setSources] = useState([]);
   const [count, setCount] = useState(5);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [generationStartedAt, setGenerationStartedAt] = useState(null);
+  const [elapsedSec, setElapsedSec] = useState(0);
+  const [lastGenerationSec, setLastGenerationSec] = useState(null);
   const [isLoadingMeta, setIsLoadingMeta] = useState(false);
   const [questions, setQuestions] = useState([]);
   const [idx, setIdx] = useState(0);
@@ -21,6 +24,15 @@ export default function QuizMode() {
   const answeredCount = questions.filter((item) => Object.prototype.hasOwnProperty.call(answers, item.id)).length;
   const progress = questions.length ? Math.round(((idx + 1) / questions.length) * 100) : 0;
   const canGenerate = Boolean(source) && Boolean(command.trim()) && !isGenerating;
+
+  useEffect(() => {
+    if (!isGenerating || !generationStartedAt) return undefined;
+    const id = setInterval(() => {
+      const sec = Math.max(0, Math.floor((Date.now() - generationStartedAt) / 1000));
+      setElapsedSec(sec);
+    }, 200);
+    return () => clearInterval(id);
+  }, [isGenerating, generationStartedAt]);
 
   useEffect(() => {
     let mounted = true;
@@ -50,6 +62,9 @@ export default function QuizMode() {
 
   async function generate() {
     setErr('');
+    const startedAt = Date.now();
+    setGenerationStartedAt(startedAt);
+    setElapsedSec(0);
     setIsGenerating(true);
     try {
       const data = await apiJson('/api/questions/generate', {
@@ -61,8 +76,17 @@ export default function QuizMode() {
       setIdx(0);
       setShowKey(false);
     } catch (e) {
-      setErr(e.message);
+      const msg = String(e?.message || '');
+      if (msg.includes('429')) {
+        setErr('LLM 요청 한도(429)에 걸렸습니다. 잠시 후 다시 시도하거나 대시보드에서 다른 모델로 바꿔주세요.');
+      } else if (msg.includes('404')) {
+        setErr('선택한 모델 호출 경로를 찾지 못했습니다(404). 대시보드에서 다른 모델을 선택하거나 해당 모델 ID/API 키 설정을 확인해 주세요.');
+      } else {
+        setErr(msg || '문제 생성 실패');
+      }
     } finally {
+      setLastGenerationSec(Math.max(0, (Date.now() - startedAt) / 1000));
+      setGenerationStartedAt(null);
       setIsGenerating(false);
     }
   }
@@ -99,7 +123,14 @@ export default function QuizMode() {
         <p className="mt-2 text-xs text-slate-500">문제 개수는 1~20개까지 설정할 수 있습니다. (현재 {normalizedCount}개)</p>
         {!source || !command.trim() ? <p className="mt-2 text-xs text-amber-300">파일과 출제 지시를 입력해야 생성할 수 있습니다.</p> : null}
       </PageCard>
-      {isGenerating ? <p className="mt-2 text-xs text-slate-400">문제를 생성하는 중입니다. 잠시만 기다려 주세요…</p> : null}
+      {isGenerating ? (
+        <p className="mt-2 text-xs text-slate-400">
+          문제를 생성하는 중입니다. 잠시만 기다려 주세요… ({elapsedSec}초 경과)
+        </p>
+      ) : null}
+      {!isGenerating && lastGenerationSec !== null ? (
+        <p className="mt-2 text-xs text-slate-500">최근 문제 생성 소요 시간: {lastGenerationSec.toFixed(1)}초</p>
+      ) : null}
       {err ? <p className="mt-2 text-sm text-rose-400">{err}</p> : null}
 
       {questions.length > 0 ? (

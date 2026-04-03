@@ -4,7 +4,7 @@ import { createRequire } from 'module';
 import { prisma } from '../db.js';
 import { chunkText } from '../services/chunker.js';
 import { saveChunk } from '../services/rag.js';
-import { getChatClient, getChatModel } from '../services/llm.js';
+import { createChatCompletion } from '../services/llm.js';
 
 const require = createRequire(import.meta.url);
 const pdfParse = require('pdf-parse');
@@ -55,8 +55,7 @@ async function inferTopicsWithLlm(source) {
 [텍스트]
 ${context}`;
 
-  const res = await getChatClient().chat.completions.create({
-    model: getChatModel(),
+  const res = await createChatCompletion({
     messages: [{ role: 'user', content: prompt }],
     max_tokens: 400,
   });

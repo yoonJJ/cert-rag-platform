@@ -65,8 +65,8 @@ export default function Dashboard() {
     label: llmLabel,
     provider: llmProvider,
     options: llmOptions,
-    hasOpenAiKey,
-    openaiKeyHint,
+    keyStatus,
+    keyHints,
     error: llmContextErr,
     refresh: refreshLlm,
   } = useLlmStatus();
@@ -78,12 +78,14 @@ export default function Dashboard() {
   const [wrongErr, setWrongErr] = useState('');
   const [llmSettingsErr, setLlmSettingsErr] = useState('');
   const [llmSaving, setLlmSaving] = useState(false);
-  const [openaiKeyDraft, setOpenaiKeyDraft] = useState('');
+  const [providerKeyDraft, setProviderKeyDraft] = useState('');
   const [keySaving, setKeySaving] = useState(false);
   const [keyErr, setKeyErr] = useState('');
 
   const ollamaOptions = useMemo(() => llmOptions.filter((o) => o.provider === 'ollama'), [llmOptions]);
   const openaiOptions = useMemo(() => llmOptions.filter((o) => o.provider === 'openai'), [llmOptions]);
+  const geminiOptions = useMemo(() => llmOptions.filter((o) => o.provider === 'gemini'), [llmOptions]);
+  const claudeOptions = useMemo(() => llmOptions.filter((o) => o.provider === 'claude'), [llmOptions]);
 
   useEffect(() => {
     let mounted = true;
@@ -152,21 +154,25 @@ export default function Dashboard() {
     }
   }
 
-  async function handleSaveOpenAiKey() {
+  const needsProviderKey = llmProvider === 'openai' || llmProvider === 'gemini' || llmProvider === 'claude';
+  const providerHasKey = Boolean(keyStatus?.[llmProvider]);
+  const providerKeyHint = keyHints?.[llmProvider] || null;
+
+  async function handleSaveProviderKey() {
     setKeySaving(true);
     setKeyErr('');
     try {
       const res = await fetch(`${apiBase}/api/settings/llm`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ openaiApiKey: openaiKeyDraft }),
+        body: JSON.stringify({ keyProvider: llmProvider, providerApiKey: providerKeyDraft }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         setKeyErr(data.error || 'API 키 저장에 실패했습니다.');
         return;
       }
-      setOpenaiKeyDraft('');
+      setProviderKeyDraft('');
       await refreshLlm();
       const healthRes = await fetch(`${apiBase}/api/health`).then((r) => r.json());
       setHealth(healthRes);
@@ -177,14 +183,14 @@ export default function Dashboard() {
     }
   }
 
-  async function handleClearOpenAiKey() {
+  async function handleClearProviderKey() {
     setKeySaving(true);
     setKeyErr('');
     try {
       const res = await fetch(`${apiBase}/api/settings/llm`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ openaiApiKey: '' }),
+        body: JSON.stringify({ keyProvider: llmProvider, providerApiKey: '' }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -272,19 +278,37 @@ export default function Dashboard() {
                           ))}
                         </optgroup>
                       ) : null}
+                      {geminiOptions.length > 0 ? (
+                        <optgroup label="Gemini (API 키)">
+                          {geminiOptions.map((o) => (
+                            <option key={o.id} value={o.id}>
+                              {o.label}
+                            </option>
+                          ))}
+                        </optgroup>
+                      ) : null}
+                      {claudeOptions.length > 0 ? (
+                        <optgroup label="Claude (API 키)">
+                          {claudeOptions.map((o) => (
+                            <option key={o.id} value={o.id}>
+                              {o.label}
+                            </option>
+                          ))}
+                        </optgroup>
+                      ) : null}
                     </>
                   )}
                 </select>
                 {llmSaving ? <p className="mt-1 text-xs text-slate-500">모델 적용 중…</p> : null}
               </div>
 
-              {llmProvider === 'openai' ? (
+              {needsProviderKey ? (
                 <div className="rounded-xl border border-slate-700/80 bg-slate-950/40 p-3">
-                  <p className="text-xs font-medium uppercase tracking-wide text-slate-500">OpenAI API 키</p>
+                  <p className="text-xs font-medium uppercase tracking-wide text-slate-500">{llmProvider.toUpperCase()} API 키</p>
                   <p className="mt-1 text-xs text-slate-500">
                     키는 이 Node 프로세스 메모리에만 저장되며 응답 본문으로는 전체 값이 내려가지 않습니다.
-                    {hasOpenAiKey ? (
-                      <span className="block pt-1 text-emerald-400/90">저장됨 {openaiKeyHint ? `(${openaiKeyHint})` : ''}</span>
+                    {providerHasKey ? (
+                      <span className="block pt-1 text-emerald-400/90">저장됨 {providerKeyHint ? `(${providerKeyHint})` : ''}</span>
                     ) : (
                       <span className="block pt-1 text-amber-400/90">키가 없으면 채팅/생성 요청이 실패합니다.</span>
                     )}
@@ -293,23 +317,23 @@ export default function Dashboard() {
                     type="password"
                     autoComplete="off"
                     placeholder="sk-..."
-                    value={openaiKeyDraft}
-                    onChange={(e) => setOpenaiKeyDraft(e.target.value)}
+                    value={providerKeyDraft}
+                    onChange={(e) => setProviderKeyDraft(e.target.value)}
                     className="mt-2 w-full rounded-lg border border-slate-600 bg-slate-900 px-3 py-2 font-mono text-sm text-white outline-none ring-accent placeholder:text-slate-600 focus:ring-2"
                   />
                   <div className="mt-2 flex flex-wrap gap-2">
                     <button
                       type="button"
                       disabled={keySaving}
-                      onClick={handleSaveOpenAiKey}
+                      onClick={handleSaveProviderKey}
                       className="rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90 disabled:opacity-50"
                     >
                       {keySaving ? '저장 중…' : '키 저장'}
                     </button>
                     <button
                       type="button"
-                      disabled={keySaving || !hasOpenAiKey}
-                      onClick={handleClearOpenAiKey}
+                      disabled={keySaving || !providerHasKey}
+                      onClick={handleClearProviderKey}
                       className="rounded-lg border border-slate-600 px-3 py-1.5 text-xs font-medium text-slate-300 hover:bg-slate-800 disabled:opacity-40"
                     >
                       키 지우기

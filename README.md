@@ -8,12 +8,15 @@
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-pgvector-4169E1?logo=postgresql&logoColor=white)](https://github.com/pgvector/pgvector)
 [![Prisma](https://img.shields.io/badge/Prisma-ORM-2D3748?logo=prisma&logoColor=white)](https://www.prisma.io/)
 [![Ollama](https://img.shields.io/badge/Ollama-Local_LLM-000000)](https://ollama.com/)
+[![ChatGPT](https://img.shields.io/badge/ChatGPT-74aa9c?logo=openai&logoColor=white)](https://chatgpt.com/)
+[![Google Gemini](https://img.shields.io/badge/Google-Gemini-1A73E8?logo=googlegemini&logoColor=white)](https://ai.google.dev/)
+[![ChatGPT](https://img.shields.io/badge/ChatGPT-74aa9c?logo=openai&logoColor=white)](https://chatgpt.com/)
 
 ---
 
 ## 한 줄 소개
 
-업로드한 **PDF 텍스트를 청크·임베딩·벡터 검색**으로 묶고, 객관식 문제를 생성합니다. 채팅/생성은 **Ollama 또는 OpenAI API**를 선택해 사용할 수 있으며, **시험 모드·오답 노트·SSE AI 튜터**까지 한 화면 흐름으로 이어지도록 설계했습니다. 대시보드에서 모델을 전환하고(OpenAI 선택 시 API 키 입력), 상단 바에서 **현재 모델과 연결 상태**를 확인할 수 있습니다.
+업로드한 **PDF 텍스트를 청크·임베딩·벡터 검색**으로 묶고, 객관식 문제를 생성합니다. 채팅/생성은 **Ollama / OpenAI / Gemini / Claude** 중 선택해 사용할 수 있으며, **시험 모드·오답 노트·SSE AI 튜터**까지 한 화면 흐름으로 이어지도록 설계했습니다. 대시보드에서 모델을 전환하고(클라우드 모델 선택 시 API 키 입력), 상단 바에서 **현재 모델과 연결 상태**를 확인할 수 있습니다.
 
 ---
 
@@ -56,10 +59,10 @@
 ## 채팅 LLM 모델 선택 (동작 방식)
 
 - **UI**: 대시보드 드롭다운에서 변경 → `PUT /api/settings/llm`으로 서버 런타임 모델 갱신.
-- **OpenAI 전환**: OpenAI 계열 모델을 고르면 하단 입력창에 API 키를 저장해 바로 사용합니다 (`PUT /api/settings/llm` with `openaiApiKey`).
+- **클라우드 모델 키 입력**: OpenAI/Gemini/Claude 선택 시 같은 입력 UI에서 API 키를 저장해 사용합니다.
 - **적용 범위**: **문제 생성**, **PDF 업로드 후 토픽 추론**, **AI 튜터** 호출에 동일한 채팅 모델이 사용됩니다.
 - **임베딩 고정**: 검색 임베딩은 항상 `nomic-embed-text`(Ollama)입니다.
-- **주의**: 모델 선택과 OpenAI 키는 **서버 프로세스 메모리**에만 있어 재시작 시 초기화됩니다.
+- **주의**: 모델 선택과 API 키는 **서버 프로세스 메모리**에만 있어 재시작 시 초기화됩니다.
 
 ---
 
@@ -75,7 +78,7 @@ flowchart TB
     API[Express]
     SET[settings.js: LLM 선택]
     RAG[rag.js: embed / retrieve / generate]
-    LLM[llm.js: Chat Router - Ollama or OpenAI]
+    LLM[llm.js: Chat Router - Ollama OpenAI Gemini Claude]
   end
   subgraph data [Data]
     PG[(PostgreSQL + pgvector)]
@@ -86,6 +89,8 @@ flowchart TB
   end
   subgraph cloud [Cloud AI]
     OA[OpenAI API: chat]
+    GM[Gemini API: chat]
+    CL[Claude API: chat]
   end
   UI -->|REST + SSE| API
   LLMUI -->|GET/PUT settings/llm| API
@@ -94,6 +99,8 @@ flowchart TB
   RAG --> LLM
   LLM --> OL
   LLM --> OA
+  LLM --> GM
+  LLM --> CL
   API --> PG
   API -.-> RD
   RAG --> PG
@@ -108,7 +115,7 @@ flowchart TB
 | Frontend | React, Vite, Tailwind CSS, React Router |
 | Backend | Node.js (ESM), Express, Multer |
 | DB / ORM | PostgreSQL, **pgvector**, Prisma |
-| AI | 채팅: **Ollama / OpenAI API** 선택, 임베딩: `nomic-embed-text`(Ollama 고정), OpenAI SDK 클라이언트 |
+| AI | 채팅: **Ollama / OpenAI / Gemini / Claude** 선택, 임베딩: `nomic-embed-text`(Ollama 고정), OpenAI SDK + Anthropic API |
 | Infra | Docker Compose (Postgres, Redis) |
 | 기타 | SSE 스트리밍, `pdf-parse` |
 
@@ -228,13 +235,15 @@ classDiagram
 
 ### 유스케이스 다이어그램
 
-**주 액터**는 자격증을 준비하는 **학습자**입니다. 외부 시스템은 **Ollama(로컬)**와 **OpenAI API(클라우드)**를 함께 사용합니다.
+**주 액터**는 자격증을 준비하는 **학습자**입니다. 외부 시스템은 **Ollama(로컬)** + **OpenAI/Gemini/Claude API(클라우드)**를 함께 사용합니다.
 
 ```mermaid
 flowchart TB
   learner((학습자))
   ollama[Ollama - 로컬 임베딩과 채팅]
   openai[OpenAI API - 클라우드 채팅]
+  gemini[Gemini API - 클라우드 채팅]
+  claude[Claude API - 클라우드 채팅]
 
   subgraph sys [IT 자격증 학습 플랫폼]
     direction TB
@@ -266,6 +275,12 @@ flowchart TB
   uc4 -.->|문제 JSON 생성 선택| openai
   uc7 -.->|문제 생성 선택| openai
   uc8 -.->|스트리밍 설명 선택| openai
+  uc4 -.->|문제 생성 선택| gemini
+  uc7 -.->|문제 생성 선택| gemini
+  uc8 -.->|스트리밍 설명 선택| gemini
+  uc4 -.->|문제 생성 선택| claude
+  uc7 -.->|문제 생성 선택| claude
+  uc8 -.->|스트리밍 설명 선택| claude
 ```
 
 | 유스케이스 | 개요 |
@@ -298,7 +313,7 @@ ollama pull gemma4:26b
 ollama pull nomic-embed-text
 ```
 
-> Ollama 모델 태그는 `ollama list`와 일치해야 합니다. OpenAI 모델은 `OPENAI_CHAT_MODELS`로 목록을 커스터마이징할 수 있습니다.
+> Ollama 모델 태그는 `ollama list`와 일치해야 합니다. OpenAI/Gemini/Claude 모델은 각각 `*_CHAT_MODELS` 환경변수로 목록을 커스터마이징할 수 있습니다.
 
 ### 인프라
 
@@ -319,17 +334,23 @@ OLLAMA_API_KEY="ollama"
 REDIS_URL="redis://localhost:6379"
 PORT=3001
 
-# 기본 선택 옵션 ID (형식: ollama/모델명 또는 openai/모델명)
+# 기본 선택 옵션 ID (형식: provider/model)
 # CHAT_MODEL=ollama/gpt-oss:20b
 
 # Ollama 채팅 후보
 # OLLAMA_CHAT_MODELS=gpt-oss:20b|GPT-OSS 20B,gemma4:26b|Gemma 4 26B
 
-# OpenAI 키 (선택)
+# OpenAI API
 # OPENAI_API_KEY=sk-...
+# OPENAI_CHAT_MODELS=gpt-4o-mini|GPT-4o mini,gpt-4o|GPT-4o
 
-# OpenAI 채팅 후보 (생략 시 gpt-4o / gpt-4o-mini / gpt-4-turbo)
-# OPENAI_CHAT_MODELS=gpt-4o|GPT-4o,gpt-4o-mini|GPT-4o mini,gpt-4-turbo|GPT-4 Turbo
+# Gemini API
+# GEMINI_API_KEY=AIza...
+# GEMINI_CHAT_MODELS=gemini-2.0-flash|Gemini 2.0 Flash (프리티어),gemini-1.5-flash|Gemini 1.5 Flash (프리티어),gemini-1.5-pro|Gemini 1.5 Pro
+
+# Claude API
+# CLAUDE_API_KEY=sk-ant-...
+# CLAUDE_CHAT_MODELS=claude-3-5-haiku-latest|Claude 3.5 Haiku,claude-3-5-sonnet-latest|Claude 3.5 Sonnet
 ```
 
 `client/.env` (선택, CORS/포트 분리 시):
@@ -371,9 +392,9 @@ cd client && npm run dev
 **설정**:
 - `GET /api/settings/llm`
 - `PUT /api/settings/llm`
-  - 모델 변경: `{ "model": "ollama/gpt-oss:20b" }` 또는 `{ "model": "openai/gpt-4o" }`
-  - OpenAI 키 저장: `{ "openaiApiKey": "sk-..." }`
-  - OpenAI 키 삭제: `{ "openaiApiKey": "" }`
+  - 모델 변경: `{ "model": "ollama/gpt-oss:20b" }`, `{ "model": "openai/gpt-4o-mini" }`, `{ "model": "gemini/gemini-2.0-flash" }`, `{ "model": "claude/claude-3-5-haiku-latest" }`
+  - provider 키 저장: `{ "keyProvider": "openai|gemini|claude", "providerApiKey": "..." }`
+  - provider 키 삭제: `{ "keyProvider": "openai|gemini|claude", "providerApiKey": "" }`
 
 **업로드·소스**: `POST /api/upload`, `GET /api/sources`, `GET /api/sources/stats`, `GET /api/sources/topics`, `GET /api/sources/metadata`, `GET /api/sources/chunks`
 
@@ -406,7 +427,9 @@ ollama ps
 - **`Can't reach database server at localhost:5432`**: Postgres 컨테이너가 떠 있는지, `DATABASE_URL` 호스트·포트·DB명이 `docker-compose.yml`과 맞는지 확인.
 - **프론트 API 실패**: `VITE_API_URL`과 백엔드 `PORT` 일치 여부 확인.
 - **Ollama 모델 호출 실패**: `ollama serve` 실행 여부와 `OLLAMA_CHAT_MODELS`의 모델명이 `ollama list`와 일치하는지 확인하세요.
-- **OpenAI 모델 호출 실패**: OpenAI 모델 선택 시 API 키를 저장했는지 확인하세요(키 없으면 health down).
+- **클라우드 모델 호출 실패 (404)**: 선택한 provider에서 해당 모델 ID가 유효한지 확인하세요.
+- **요청 제한 (429)**: 해당 provider 쿼터/레이트 제한입니다. 잠시 후 재시도하거나 다른 모델로 변경하세요.
+- **OpenAI/Gemini/Claude 호출 실패**: 해당 provider API 키가 저장되어 있는지 확인하세요.
 - **모델 변경이 안 먹는 것 같음**: 선택/키는 서버 메모리라 재시작 시 초기화됩니다. 동일 서버 인스턴스에 요청이 가는지(프록시/포트) 확인하세요.
 
 ---
