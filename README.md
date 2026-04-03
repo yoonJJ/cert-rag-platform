@@ -13,7 +13,7 @@
 
 ## 한 줄 소개
 
-업로드한 **PDF 텍스트를 청크·임베딩·벡터 검색**으로 묶고, **Ollama**로 객관식 문제를 생성합니다. **시험 모드·오답 노트·SSE AI 튜터**까지 한 화면 흐름으로 이어지도록 설계했습니다. 대시보드에서 **채팅/생성용 LLM 모델을 선택**할 수 있고, 상단 바에 **현재 모델과 연결 상태**가 표시됩니다.
+업로드한 **PDF 텍스트를 청크·임베딩·벡터 검색**으로 묶고, 객관식 문제를 생성합니다. 채팅/생성은 **Ollama 또는 OpenAI API**를 선택해 사용할 수 있으며, **시험 모드·오답 노트·SSE AI 튜터**까지 한 화면 흐름으로 이어지도록 설계했습니다. 대시보드에서 모델을 전환하고(OpenAI 선택 시 API 키 입력), 상단 바에서 **현재 모델과 연결 상태**를 확인할 수 있습니다.
 
 ---
 
@@ -55,10 +55,11 @@
 
 ## 채팅 LLM 모델 선택 (동작 방식)
 
-- **UI**: 대시보드 드롭다운에서 변경 → `PUT /api/settings/llm` → 서버 메모리의 현재 모델 ID 갱신.
-- **적용 범위**: **문제 생성**, **PDF 업로드 후 토픽 추론**, **AI 튜터** 호출에 동일한 `model`이 사용됩니다.
-- **임베딩**: `nomic-embed-text`는 모델 선택과 무관하게 고정입니다.
-- **주의**: 선택 값은 **프로세스 메모리**에만 있어 **서버 재시작 시** `CHAT_MODEL` 또는 후보 목록의 첫 항목 기준으로 초기화됩니다. Ollama에 실제로 존재하는 모델 태그(`ollama list`)와 ID가 일치해야 합니다.
+- **UI**: 대시보드 드롭다운에서 변경 → `PUT /api/settings/llm`으로 서버 런타임 모델 갱신.
+- **OpenAI 전환**: OpenAI 계열 모델을 고르면 하단 입력창에 API 키를 저장해 바로 사용합니다 (`PUT /api/settings/llm` with `openaiApiKey`).
+- **적용 범위**: **문제 생성**, **PDF 업로드 후 토픽 추론**, **AI 튜터** 호출에 동일한 채팅 모델이 사용됩니다.
+- **임베딩 고정**: 검색 임베딩은 항상 `nomic-embed-text`(Ollama)입니다.
+- **주의**: 모델 선택과 OpenAI 키는 **서버 프로세스 메모리**에만 있어 재시작 시 초기화됩니다.
 
 ---
 
@@ -74,14 +75,17 @@ flowchart TB
     API[Express]
     SET[settings.js: LLM 선택]
     RAG[rag.js: embed / retrieve / generate]
-    LLM[llm.js: OpenAI-compatible → Ollama]
+    LLM[llm.js: Chat Router (Ollama/OpenAI)]
   end
   subgraph data [Data]
     PG[(PostgreSQL + pgvector)]
     RD[(Redis)]
   end
   subgraph local [Local AI]
-    OL[Ollama: chat + embeddings]
+    OL[Ollama: embeddings + local chat]
+  end
+  subgraph cloud [Cloud AI]
+    OA[OpenAI API: chat]
   end
   UI -->|REST + SSE| API
   LLMUI -->|GET/PUT settings/llm| API
@@ -89,6 +93,7 @@ flowchart TB
   API --> RAG
   RAG --> LLM
   LLM --> OL
+  LLM --> OA
   API --> PG
   API -.-> RD
   RAG --> PG
@@ -103,7 +108,7 @@ flowchart TB
 | Frontend | React, Vite, Tailwind CSS, React Router |
 | Backend | Node.js (ESM), Express, Multer |
 | DB / ORM | PostgreSQL, **pgvector**, Prisma |
-| AI | Ollama — **선택 가능 채팅 모델**(기본 `gpt-oss:20b`, `gemma4:26b`), 임베딩 `nomic-embed-text`, OpenAI SDK 호환 클라이언트 |
+| AI | 채팅: **Ollama / OpenAI API** 선택, 임베딩: `nomic-embed-text`(Ollama 고정), OpenAI SDK 클라이언트 |
 | Infra | Docker Compose (Postgres, Redis) |
 | 기타 | SSE 스트리밍, `pdf-parse` |
 
@@ -223,12 +228,13 @@ classDiagram
 
 ### 유스케이스 다이어그램
 
-**주 액터**는 자격증을 준비하는 **학습자**입니다. **Ollama**는 로컬에서 임베딩·채팅을 제공하는 외부 시스템으로 표현했습니다.
+**주 액터**는 자격증을 준비하는 **학습자**입니다. 외부 시스템은 **Ollama(로컬)**와 **OpenAI API(클라우드)**를 함께 사용합니다.
 
 ```mermaid
 flowchart TB
   learner((학습자))
-  ollama[/Ollama\n로컬 LLM·임베딩/]
+  ollama[/Ollama\n로컬 임베딩·채팅/]
+  openai[/OpenAI API\n클라우드 채팅/]
 
   subgraph sys [IT 자격증 학습 플랫폼]
     direction TB
@@ -257,6 +263,9 @@ flowchart TB
   uc4 -.->|문제 JSON 생성| ollama
   uc7 -.->|문제 생성| ollama
   uc8 -.->|스트리밍 설명| ollama
+  uc4 -.->|문제 JSON 생성(선택)| openai
+  uc7 -.->|문제 생성(선택)| openai
+  uc8 -.->|스트리밍 설명(선택)| openai
 ```
 
 | 유스케이스 | 개요 |
@@ -289,7 +298,7 @@ ollama pull gemma4:26b
 ollama pull nomic-embed-text
 ```
 
-> 사용하는 채팅 모델 태그는 `ollama list`와 일치해야 합니다. 다른 이름이면 `server/.env`의 `OLLAMA_CHAT_MODELS`로 후보를 직접 적어 주세요.
+> Ollama 모델 태그는 `ollama list`와 일치해야 합니다. OpenAI 모델은 `OPENAI_CHAT_MODELS`로 목록을 커스터마이징할 수 있습니다.
 
 ### 인프라
 
@@ -310,11 +319,17 @@ OLLAMA_API_KEY="ollama"
 REDIS_URL="redis://localhost:6379"
 PORT=3001
 
-# 선택: 기동 시 기본 채팅 모델 (후보 목록에 있는 id)
-# CHAT_MODEL=gpt-oss:20b
+# 기본 선택 옵션 ID (형식: ollama/모델명 또는 openai/모델명)
+# CHAT_MODEL=ollama/gpt-oss:20b
 
-# 선택: 드롭다운 후보. 생략 시 gpt-oss:20b + gemma4:26b
+# Ollama 채팅 후보
 # OLLAMA_CHAT_MODELS=gpt-oss:20b|GPT-OSS 20B,gemma4:26b|Gemma 4 26B
+
+# OpenAI 키 (선택)
+# OPENAI_API_KEY=sk-...
+
+# OpenAI 채팅 후보 (생략 시 gpt-4o / gpt-4o-mini / gpt-4-turbo)
+# OPENAI_CHAT_MODELS=gpt-4o|GPT-4o,gpt-4o-mini|GPT-4o mini,gpt-4-turbo|GPT-4 Turbo
 ```
 
 `client/.env` (선택, CORS/포트 분리 시):
@@ -353,7 +368,12 @@ cd client && npm run dev
 
 ## API 요약
 
-**설정**: `GET /api/settings/llm`, `PUT /api/settings/llm` (body: `{ "model": "<ollama-model-id>" }`)
+**설정**:
+- `GET /api/settings/llm`
+- `PUT /api/settings/llm`
+  - 모델 변경: `{ "model": "ollama/gpt-oss:20b" }` 또는 `{ "model": "openai/gpt-4o" }`
+  - OpenAI 키 저장: `{ "openaiApiKey": "sk-..." }`
+  - OpenAI 키 삭제: `{ "openaiApiKey": "" }`
 
 **업로드·소스**: `POST /api/upload`, `GET /api/sources`, `GET /api/sources/stats`, `GET /api/sources/topics`, `GET /api/sources/metadata`, `GET /api/sources/chunks`
 
@@ -385,8 +405,9 @@ ollama ps
 - **`vector type does not exist`**: `docker compose up -d` 후 서버 재시작. 부트 시 `vector` 확장 자동 생성.
 - **`Can't reach database server at localhost:5432`**: Postgres 컨테이너가 떠 있는지, `DATABASE_URL` 호스트·포트·DB명이 `docker-compose.yml`과 맞는지 확인.
 - **프론트 API 실패**: `VITE_API_URL`과 백엔드 `PORT` 일치 여부 확인.
-- **문제 생성 실패·지연**: `ollama serve` 및 채팅/임베딩 모델 설치 여부 확인. 모델 id는 UI 후보와 `ollama list`의 이름이 같아야 합니다.
-- **모델 변경이 안 먹는 것 같음**: API 서버를 재시작하면 선택이 초기화됩니다. 같은 서버 인스턴스에서 `PUT /api/settings/llm` 후 요청이 그 서버로 가는지(프록시/포트) 확인하세요.
+- **Ollama 모델 호출 실패**: `ollama serve` 실행 여부와 `OLLAMA_CHAT_MODELS`의 모델명이 `ollama list`와 일치하는지 확인하세요.
+- **OpenAI 모델 호출 실패**: OpenAI 모델 선택 시 API 키를 저장했는지 확인하세요(키 없으면 health down).
+- **모델 변경이 안 먹는 것 같음**: 선택/키는 서버 메모리라 재시작 시 초기화됩니다. 동일 서버 인스턴스에 요청이 가는지(프록시/포트) 확인하세요.
 
 ---
 

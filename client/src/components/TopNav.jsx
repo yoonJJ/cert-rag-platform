@@ -1,8 +1,8 @@
 import { useLlmStatus } from '../context/LlmStatusContext.jsx';
 
 export function LlmStatusPill({ className = '' }) {
-  const { model, label, llmOk, llmState, loading } = useLlmStatus();
-  const display = label || model || (loading ? '불러오는 중…' : '—');
+  const { model, apiModel, provider, label, llmOk, llmState, loading } = useLlmStatus();
+  const display = label || apiModel || model || (loading ? '불러오는 중…' : '—');
 
   let showPing = false;
   let dotClass = 'bg-slate-500';
@@ -29,7 +29,7 @@ export function LlmStatusPill({ className = '' }) {
   return (
     <div
       className={`flex max-w-[min(100%,90vw,420px)] items-center gap-2 rounded-full border bg-slate-900/85 py-1.5 pl-2.5 pr-3 shadow-sm shadow-black/20 ${borderClass} ${className}`}
-      title={model ? `모델 ID: ${model}` : undefined}
+      title={apiModel ? `${provider} → ${apiModel}` : model || undefined}
     >
       <span className="relative inline-flex h-2.5 w-2.5 shrink-0 items-center justify-center">
         {showPing ? (

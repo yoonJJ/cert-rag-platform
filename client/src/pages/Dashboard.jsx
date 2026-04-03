@@ -59,8 +59,17 @@ function ConnectionStatusCard({ title, status, fallbackText }) {
 }
 
 export default function Dashboard() {
-  const { model: llmModel, label: llmLabel, options: llmOptions, error: llmContextErr, refresh: refreshLlm } =
-    useLlmStatus();
+  const {
+    model: llmModel,
+    apiModel: llmApiModel,
+    label: llmLabel,
+    provider: llmProvider,
+    options: llmOptions,
+    hasOpenAiKey,
+    openaiKeyHint,
+    error: llmContextErr,
+    refresh: refreshLlm,
+  } = useLlmStatus();
   const [health, setHealth] = useState(null);
   const [files, setFiles] = useState([]);
   const [wrongItems, setWrongItems] = useState([]);
@@ -69,6 +78,12 @@ export default function Dashboard() {
   const [wrongErr, setWrongErr] = useState('');
   const [llmSettingsErr, setLlmSettingsErr] = useState('');
   const [llmSaving, setLlmSaving] = useState(false);
+  const [openaiKeyDraft, setOpenaiKeyDraft] = useState('');
+  const [keySaving, setKeySaving] = useState(false);
+  const [keyErr, setKeyErr] = useState('');
+
+  const ollamaOptions = useMemo(() => llmOptions.filter((o) => o.provider === 'ollama'), [llmOptions]);
+  const openaiOptions = useMemo(() => llmOptions.filter((o) => o.provider === 'openai'), [llmOptions]);
 
   useEffect(() => {
     let mounted = true;
@@ -115,6 +130,7 @@ export default function Dashboard() {
     if (!nextId || nextId === llmModel) return;
     setLlmSaving(true);
     setLlmSettingsErr('');
+    setKeyErr('');
     try {
       const res = await fetch(`${apiBase}/api/settings/llm`, {
         method: 'PUT',
@@ -133,6 +149,55 @@ export default function Dashboard() {
       setLlmSettingsErr('모델 변경 요청 중 오류가 났습니다.');
     } finally {
       setLlmSaving(false);
+    }
+  }
+
+  async function handleSaveOpenAiKey() {
+    setKeySaving(true);
+    setKeyErr('');
+    try {
+      const res = await fetch(`${apiBase}/api/settings/llm`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ openaiApiKey: openaiKeyDraft }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setKeyErr(data.error || 'API 키 저장에 실패했습니다.');
+        return;
+      }
+      setOpenaiKeyDraft('');
+      await refreshLlm();
+      const healthRes = await fetch(`${apiBase}/api/health`).then((r) => r.json());
+      setHealth(healthRes);
+    } catch {
+      setKeyErr('API 키 저장 중 오류가 났습니다.');
+    } finally {
+      setKeySaving(false);
+    }
+  }
+
+  async function handleClearOpenAiKey() {
+    setKeySaving(true);
+    setKeyErr('');
+    try {
+      const res = await fetch(`${apiBase}/api/settings/llm`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ openaiApiKey: '' }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setKeyErr(data.error || '초기화에 실패했습니다.');
+        return;
+      }
+      await refreshLlm();
+      const healthRes = await fetch(`${apiBase}/api/health`).then((r) => r.json());
+      setHealth(healthRes);
+    } catch {
+      setKeyErr('초기화 중 오류가 났습니다.');
+    } finally {
+      setKeySaving(false);
     }
   }
 
@@ -156,34 +221,104 @@ export default function Dashboard() {
           <div className="flex flex-col gap-5 lg:flex-row lg:items-stretch lg:justify-between">
             <div className="min-w-0 flex-1 rounded-xl border border-slate-700/80 bg-slate-950/50 p-4">
               <h2 className="text-xs font-medium uppercase tracking-wide text-slate-500">현재 사용 중인 LLM</h2>
-              <p className="mt-2 truncate text-xl font-semibold text-white">{llmLabel || llmModel || '—'}</p>
-              <p className="mt-1 break-all font-mono text-xs text-slate-400">{llmModel || '모델 정보를 불러오는 중…'}</p>
+              <p className="mt-2 truncate text-xl font-semibold text-white">{llmLabel || llmApiModel || '—'}</p>
+              <p className="mt-1 text-xs text-slate-500">
+                백엔드: <span className="font-mono text-slate-400">{llmProvider || '—'}</span>
+                {llmApiModel ? (
+                  <>
+                    {' '}
+                    · API 모델 <span className="font-mono text-slate-400">{llmApiModel}</span>
+                  </>
+                ) : null}
+              </p>
+              <p className="mt-1 break-all font-mono text-[11px] text-slate-500">옵션 ID: {llmModel || '—'}</p>
               <p className="mt-3 text-xs text-slate-500">
-                문제 생성 · PDF 토픽 추론 · AI 튜터 스트리밍에 동일하게 적용됩니다. 서버 재시작 시 기본값으로 돌아갑니다.
+                문제 생성 · PDF 토픽 추론 · AI 튜터에 동일하게 적용됩니다. 임베딩은 항상 Ollama{' '}
+                <span className="font-mono text-slate-400">nomic-embed-text</span>입니다. 선택·API 키는 서버 메모리에만
+                있으며 재시작 시 초기화됩니다.
               </p>
             </div>
-            <div className="flex w-full flex-col justify-center gap-2 lg:max-w-sm">
-              <label htmlFor="llm-select" className="text-xs font-medium uppercase tracking-wide text-slate-500">
-                모델 변경
-              </label>
-              <select
-                id="llm-select"
-                className="w-full rounded-lg border border-slate-600 bg-slate-900 px-3 py-2.5 text-sm text-white outline-none ring-accent focus:ring-2 disabled:opacity-50"
-                value={llmModel}
-                disabled={llmSaving || llmOptions.length === 0}
-                onChange={(e) => handleLlmChange(e.target.value)}
-              >
-                {llmOptions.length === 0 ? (
-                  <option value="">목록 없음</option>
-                ) : (
-                  llmOptions.map((o) => (
-                    <option key={o.id} value={o.id}>
-                      {o.label}
-                    </option>
-                  ))
-                )}
-              </select>
-              {llmSaving ? <p className="text-xs text-slate-500">모델 적용 중…</p> : null}
+            <div className="flex w-full flex-col justify-center gap-3 lg:max-w-md">
+              <div>
+                <label htmlFor="llm-select" className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                  모델 변경
+                </label>
+                <select
+                  id="llm-select"
+                  className="mt-1 w-full rounded-lg border border-slate-600 bg-slate-900 px-3 py-2.5 text-sm text-white outline-none ring-accent focus:ring-2 disabled:opacity-50"
+                  value={llmModel}
+                  disabled={llmSaving || llmOptions.length === 0}
+                  onChange={(e) => handleLlmChange(e.target.value)}
+                >
+                  {llmOptions.length === 0 ? (
+                    <option value="">목록 없음</option>
+                  ) : (
+                    <>
+                      {ollamaOptions.length > 0 ? (
+                        <optgroup label="Ollama (로컬)">
+                          {ollamaOptions.map((o) => (
+                            <option key={o.id} value={o.id}>
+                              {o.label}
+                            </option>
+                          ))}
+                        </optgroup>
+                      ) : null}
+                      {openaiOptions.length > 0 ? (
+                        <optgroup label="OpenAI (API 키)">
+                          {openaiOptions.map((o) => (
+                            <option key={o.id} value={o.id}>
+                              {o.label}
+                            </option>
+                          ))}
+                        </optgroup>
+                      ) : null}
+                    </>
+                  )}
+                </select>
+                {llmSaving ? <p className="mt-1 text-xs text-slate-500">모델 적용 중…</p> : null}
+              </div>
+
+              {llmProvider === 'openai' ? (
+                <div className="rounded-xl border border-slate-700/80 bg-slate-950/40 p-3">
+                  <p className="text-xs font-medium uppercase tracking-wide text-slate-500">OpenAI API 키</p>
+                  <p className="mt-1 text-xs text-slate-500">
+                    키는 이 Node 프로세스 메모리에만 저장되며 응답 본문으로는 전체 값이 내려가지 않습니다.
+                    {hasOpenAiKey ? (
+                      <span className="block pt-1 text-emerald-400/90">저장됨 {openaiKeyHint ? `(${openaiKeyHint})` : ''}</span>
+                    ) : (
+                      <span className="block pt-1 text-amber-400/90">키가 없으면 채팅/생성 요청이 실패합니다.</span>
+                    )}
+                  </p>
+                  <input
+                    type="password"
+                    autoComplete="off"
+                    placeholder="sk-..."
+                    value={openaiKeyDraft}
+                    onChange={(e) => setOpenaiKeyDraft(e.target.value)}
+                    className="mt-2 w-full rounded-lg border border-slate-600 bg-slate-900 px-3 py-2 font-mono text-sm text-white outline-none ring-accent placeholder:text-slate-600 focus:ring-2"
+                  />
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      disabled={keySaving}
+                      onClick={handleSaveOpenAiKey}
+                      className="rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90 disabled:opacity-50"
+                    >
+                      {keySaving ? '저장 중…' : '키 저장'}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={keySaving || !hasOpenAiKey}
+                      onClick={handleClearOpenAiKey}
+                      className="rounded-lg border border-slate-600 px-3 py-1.5 text-xs font-medium text-slate-300 hover:bg-slate-800 disabled:opacity-40"
+                    >
+                      키 지우기
+                    </button>
+                  </div>
+                  {keyErr ? <p className="mt-2 text-xs text-rose-400">{keyErr}</p> : null}
+                </div>
+              ) : null}
+
               {llmContextErr && !llmSettingsErr ? <p className="text-xs text-rose-400">{llmContextErr}</p> : null}
               {llmSettingsErr ? <p className="text-xs text-rose-400">{llmSettingsErr}</p> : null}
             </div>

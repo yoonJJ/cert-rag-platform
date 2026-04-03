@@ -6,8 +6,12 @@ const LlmStatusContext = createContext(null);
 
 export function LlmStatusProvider({ children }) {
   const [model, setModel] = useState('');
+  const [apiModel, setApiModel] = useState('');
   const [label, setLabel] = useState('');
+  const [provider, setProvider] = useState('ollama');
   const [options, setOptions] = useState([]);
+  const [hasOpenAiKey, setHasOpenAiKey] = useState(false);
+  const [openaiKeyHint, setOpenaiKeyHint] = useState(null);
   const [llmOk, setLlmOk] = useState(false);
   const [llmState, setLlmState] = useState('down');
   const [loading, setLoading] = useState(true);
@@ -21,8 +25,12 @@ export function LlmStatusProvider({ children }) {
         throw new Error(data.error || 'LLM 설정을 불러오지 못했습니다.');
       }
       setModel(data.model || '');
-      setLabel(data.label || data.model || '');
+      setApiModel(data.apiModel || '');
+      setLabel(data.label || data.apiModel || '');
+      setProvider(data.provider || 'ollama');
       setOptions(Array.isArray(data.options) ? data.options : []);
+      setHasOpenAiKey(!!data.hasOpenAiKey);
+      setOpenaiKeyHint(data.openaiKeyHint ?? null);
       setLlmOk(!!data.llmOk);
       setLlmState(data.llmState || 'down');
       setError('');
@@ -44,15 +52,32 @@ export function LlmStatusProvider({ children }) {
   const value = useMemo(
     () => ({
       model,
+      apiModel,
       label,
+      provider,
       options,
+      hasOpenAiKey,
+      openaiKeyHint,
       llmOk,
       llmState,
       loading,
       error,
       refresh,
     }),
-    [model, label, options, llmOk, llmState, loading, error, refresh],
+    [
+      model,
+      apiModel,
+      label,
+      provider,
+      options,
+      hasOpenAiKey,
+      openaiKeyHint,
+      llmOk,
+      llmState,
+      loading,
+      error,
+      refresh,
+    ],
   );
 
   return <LlmStatusContext.Provider value={value}>{children}</LlmStatusContext.Provider>;

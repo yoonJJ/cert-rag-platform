@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { client, getChatModel } from '../services/llm.js';
+import { getChatClient, getChatModel } from '../services/llm.js';
 import { retrieve } from '../services/rag.js';
 
 export const tutorRouter = Router();
@@ -15,7 +15,7 @@ tutorRouter.get('/tutor', async (req, res) => {
   try {
     const context = await retrieve(topic || '', 5);
 
-    const stream = await client.chat.completions.create({
+    const stream = await getChatClient().chat.completions.create({
       model: getChatModel(),
       messages: [
         {
