@@ -7,10 +7,10 @@
 [![Node.js](https://img.shields.io/badge/Node.js-Express-339933?logo=node.js&logoColor=white)](https://expressjs.com/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-pgvector-4169E1?logo=postgresql&logoColor=white)](https://github.com/pgvector/pgvector)
 [![Prisma](https://img.shields.io/badge/Prisma-ORM-2D3748?logo=prisma&logoColor=white)](https://www.prisma.io/)
-[![Ollama](https://img.shields.io/badge/Ollama-Local_LLM-000000)](https://ollama.com/)
-[![ChatGPT](https://img.shields.io/badge/ChatGPT-74aa9c?logo=openai&logoColor=white)](https://chatgpt.com/)
+[![Ollama](https://img.shields.io/badge/Ollama-Local_LLM-000000?logo=ollama&logoColor=white)](https://ollama.com/)
+[![ChatGPT](https://img.shields.io/badge/OpenAI-ChatGPT-74aa9c?logo=openai&logoColor=white)](https://chatgpt.com/)
 [![Google Gemini](https://img.shields.io/badge/Google-Gemini-1A73E8?logo=googlegemini&logoColor=white)](https://ai.google.dev/)
-[![ChatGPT](https://img.shields.io/badge/ChatGPT-74aa9c?logo=openai&logoColor=white)](https://chatgpt.com/)
+[![Claude](https://img.shields.io/badge/Anthropic-Claude-D97757?logo=claude&logoColor=white)](https://claude.ai/)
 
 ---
 
