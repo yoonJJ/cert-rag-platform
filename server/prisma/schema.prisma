@@ -1,0 +1,72 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Chunk {
+  id        String  @id @default(cuid())
+  content   String
+  embedding Unsupported("vector(768)")?
+  source    String
+  page      Int
+}
+
+model Question {
+  id          String @id @default(cuid())
+  content     String
+  options     Json
+  answer      Int
+  explanation String
+  topic       String
+  difficulty  String
+  examType    String
+  sourceDoc   String
+}
+
+model WrongAnswer {
+  id            String   @id @default(cuid())
+  question      String
+  options       Json
+  myAnswer      Int
+  correctAnswer Int
+  explanation   String
+  topic         String
+  examType      String
+  createdAt     DateTime @default(now())
+  reviewCount   Int      @default(0)
+  nextReview    DateTime @default(now())
+}
+
+model ExamAttempt {
+  id        String            @id @default(cuid())
+  examType  String
+  source    String
+  command   String
+  total     Int
+  correct   Int
+  percent   Int
+  createdAt DateTime          @default(now())
+  items     ExamAttemptItem[]
+}
+
+model ExamAttemptItem {
+  id          String      @id @default(cuid())
+  attemptId   String
+  orderNo     Int
+  questionId  String
+  question    String
+  options     Json
+  picked      Int
+  answer      Int
+  isCorrect   Boolean
+  explanation String
+  topic       String
+  sourceDoc   String
+  attempt     ExamAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+
+  @@index([attemptId, orderNo])
+}
