@@ -148,6 +148,131 @@ AIProject/
 - **WrongAnswer**: 오답 노트 (복습·유사 문제 생성 입력)
 - **ExamAttempt / ExamAttemptItem**: 시험 회차·문항별 채점 스냅샷
 
+아래 다이어그램은 **Prisma 스키마**(`server/prisma/schema.prisma`)를 기준으로 했습니다. `Chunk.embedding`은 ORM에서 `Unsupported`로 두고 Raw SQL로 다룹니다.
+
+### 도메인 클래스 다이어그램 (ER / 클래스 관점)
+
+```mermaid
+classDiagram
+  direction TB
+
+  class Chunk {
+    +String id
+    +String content
+    +String source
+    +Int page
+  }
+  note for Chunk "embedding: pgvector vector(768)\nPrisma Unsupported → $executeRaw"
+
+  class Question {
+    +String id
+    +String content
+    +Json options
+    +Int answer
+    +String explanation
+    +String topic
+    +String difficulty
+    +String examType
+    +String sourceDoc
+  }
+
+  class WrongAnswer {
+    +String id
+    +String question
+    +Json options
+    +Int myAnswer
+    +Int correctAnswer
+    +String explanation
+    +String topic
+    +String examType
+    +DateTime createdAt
+    +Int reviewCount
+    +DateTime nextReview
+  }
+
+  class ExamAttempt {
+    +String id
+    +String examType
+    +String source
+    +String command
+    +Int total
+    +Int correct
+    +Int percent
+    +DateTime createdAt
+  }
+
+  class ExamAttemptItem {
+    +String id
+    +String attemptId
+    +Int orderNo
+    +String questionId
+    +String question
+    +Json options
+    +Int picked
+    +Int answer
+    +Boolean isCorrect
+    +String explanation
+    +String topic
+    +String sourceDoc
+  }
+
+  ExamAttempt "1" *-- "*" ExamAttemptItem : items (onDelete Cascade)
+```
+
+`Chunk`, `Question`, `WrongAnswer`는 스키마상 **서로 FK로 연결되지 않으며**, `source`·`topic` 등 문자열로 업무 맥락을 맞춥니다.
+
+### 유스케이스 다이어그램
+
+**주 액터**는 자격증을 준비하는 **학습자**입니다. **Ollama**는 로컬에서 임베딩·채팅을 제공하는 외부 시스템으로 표현했습니다.
+
+```mermaid
+flowchart TB
+  learner((학습자))
+  ollama[/Ollama\n로컬 LLM·임베딩/]
+
+  subgraph sys [IT 자격증 학습 플랫폼]
+    direction TB
+    uc1([UC1: 학습 현황 확인])
+    uc2([UC2: 채팅 LLM 모델 선택])
+    uc3([UC3: PDF 업로드·RAG 인덱싱])
+    uc4([UC4: 문제 생성·퀴즈 풀이])
+    uc5([UC5: 시험 시뮬레이션·채점·이력 저장])
+    uc6([UC6: 오답 노트 관리])
+    uc7([UC7: 유사 문제 재생성])
+    uc8([UC8: AI 튜터 해설\nSSE 스트리밍])
+    uc9([UC9: 벡터·청크 검색 디버그])
+  end
+
+  learner --> uc1
+  learner --> uc2
+  learner --> uc3
+  learner --> uc4
+  learner --> uc5
+  learner --> uc6
+  learner --> uc7
+  learner --> uc8
+  learner --> uc9
+
+  uc3 -.->|임베딩·토픽 추론| ollama
+  uc4 -.->|문제 JSON 생성| ollama
+  uc7 -.->|문제 생성| ollama
+  uc8 -.->|스트리밍 설명| ollama
+```
+
+| 유스케이스 | 개요 |
+|------------|------|
+| UC1 | 대시보드에서 DB·LLM 상태, 소스·오답 요약 조회 |
+| UC2 | 사용 중 채팅 모델 조회·변경 (`/api/settings/llm`) |
+| UC3 | PDF 텍스트 추출 → 청킹 → `Chunk` + 벡터 저장 |
+| UC4 | 소스·토픽 기준 RAG 검색 후 객관식 생성·풀이 |
+| UC5 | 타이머 시험, 채점, `ExamAttempt`·`ExamAttemptItem` 저장 |
+| UC6 | 틀린 문항 `WrongAnswer` 저장·삭제·목록 |
+| UC7 | 오답 토픽 기준 유사 문제 재생성 |
+| UC8 | 오답 맥락 + RAG 컨텍스트로 실시간 해설 |
+| UC9 | 개발·검증용 벡터 유사도 검색 UI |
+
+> GitHub·GitLab 등에서 Mermaid가 비활성화된 경우, VS Code 미리보기나 [Mermaid Live Editor](https://mermaid.live)에 코드를 붙여 넣어 확인할 수 있습니다.
+
 ---
 
 ## 빠른 시작
