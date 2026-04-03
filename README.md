@@ -75,7 +75,7 @@ flowchart TB
     API[Express]
     SET[settings.js: LLM 선택]
     RAG[rag.js: embed / retrieve / generate]
-    LLM[llm.js: Chat Router (Ollama/OpenAI)]
+    LLM[llm.js: Chat Router - Ollama or OpenAI]
   end
   subgraph data [Data]
     PG[(PostgreSQL + pgvector)]
@@ -233,8 +233,8 @@ classDiagram
 ```mermaid
 flowchart TB
   learner((학습자))
-  ollama[/Ollama\n로컬 임베딩·채팅/]
-  openai[/OpenAI API\n클라우드 채팅/]
+  ollama[Ollama - 로컬 임베딩과 채팅]
+  openai[OpenAI API - 클라우드 채팅]
 
   subgraph sys [IT 자격증 학습 플랫폼]
     direction TB
@@ -245,7 +245,7 @@ flowchart TB
     uc5([UC5: 시험 시뮬레이션·채점·이력 저장])
     uc6([UC6: 오답 노트 관리])
     uc7([UC7: 유사 문제 재생성])
-    uc8([UC8: AI 튜터 해설\nSSE 스트리밍])
+    uc8([UC8: AI 튜터 해설 - SSE 스트리밍])
     uc9([UC9: 벡터·청크 검색 디버그])
   end
 
@@ -263,9 +263,9 @@ flowchart TB
   uc4 -.->|문제 JSON 생성| ollama
   uc7 -.->|문제 생성| ollama
   uc8 -.->|스트리밍 설명| ollama
-  uc4 -.->|문제 JSON 생성(선택)| openai
-  uc7 -.->|문제 생성(선택)| openai
-  uc8 -.->|스트리밍 설명(선택)| openai
+  uc4 -.->|문제 JSON 생성 선택| openai
+  uc7 -.->|문제 생성 선택| openai
+  uc8 -.->|스트리밍 설명 선택| openai
 ```
 
 | 유스케이스 | 개요 |
