@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { EmptyState, PageCard, PageContainer, PageHeader } from '../components/PageLayout.jsx';
+import { useLlmStatus } from '../context/LlmStatusContext.jsx';
 
 const apiBase = import.meta.env.VITE_API_URL || '';
 
@@ -58,12 +59,16 @@ function ConnectionStatusCard({ title, status, fallbackText }) {
 }
 
 export default function Dashboard() {
+  const { model: llmModel, label: llmLabel, options: llmOptions, error: llmContextErr, refresh: refreshLlm } =
+    useLlmStatus();
   const [health, setHealth] = useState(null);
   const [files, setFiles] = useState([]);
   const [wrongItems, setWrongItems] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [filesErr, setFilesErr] = useState('');
   const [wrongErr, setWrongErr] = useState('');
+  const [llmSettingsErr, setLlmSettingsErr] = useState('');
+  const [llmSaving, setLlmSaving] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -106,6 +111,31 @@ export default function Dashboard() {
     };
   }, []);
 
+  async function handleLlmChange(nextId) {
+    if (!nextId || nextId === llmModel) return;
+    setLlmSaving(true);
+    setLlmSettingsErr('');
+    try {
+      const res = await fetch(`${apiBase}/api/settings/llm`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model: nextId }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setLlmSettingsErr(data.error || '모델 변경에 실패했습니다.');
+        return;
+      }
+      await refreshLlm();
+      const healthRes = await fetch(`${apiBase}/api/health`).then((r) => r.json());
+      setHealth(healthRes);
+    } catch {
+      setLlmSettingsErr('모델 변경 요청 중 오류가 났습니다.');
+    } finally {
+      setLlmSaving(false);
+    }
+  }
+
   const totalChunks = useMemo(() => files.reduce((sum, f) => sum + (Number(f.chunkCount) || 0), 0), [files]);
   const examTypeCount = useMemo(() => new Set(files.map((f) => f.examType).filter(Boolean)).size, [files]);
   const recentFiles = useMemo(() => files.slice(-5).reverse(), [files]);
@@ -120,6 +150,46 @@ export default function Dashboard() {
   return (
     <PageContainer>
       <PageHeader title="학습 현황" description="학습 데이터 상태와 오늘의 액션을 한 번에 확인하세요." />
+
+      <div className="mb-4 grid gap-3 sm:gap-4 xl:grid-cols-3">
+        <PageCard className="p-4 sm:p-5 xl:col-span-3">
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-stretch lg:justify-between">
+            <div className="min-w-0 flex-1 rounded-xl border border-slate-700/80 bg-slate-950/50 p-4">
+              <h2 className="text-xs font-medium uppercase tracking-wide text-slate-500">현재 사용 중인 LLM</h2>
+              <p className="mt-2 truncate text-xl font-semibold text-white">{llmLabel || llmModel || '—'}</p>
+              <p className="mt-1 break-all font-mono text-xs text-slate-400">{llmModel || '모델 정보를 불러오는 중…'}</p>
+              <p className="mt-3 text-xs text-slate-500">
+                문제 생성 · PDF 토픽 추론 · AI 튜터 스트리밍에 동일하게 적용됩니다. 서버 재시작 시 기본값으로 돌아갑니다.
+              </p>
+            </div>
+            <div className="flex w-full flex-col justify-center gap-2 lg:max-w-sm">
+              <label htmlFor="llm-select" className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                모델 변경
+              </label>
+              <select
+                id="llm-select"
+                className="w-full rounded-lg border border-slate-600 bg-slate-900 px-3 py-2.5 text-sm text-white outline-none ring-accent focus:ring-2 disabled:opacity-50"
+                value={llmModel}
+                disabled={llmSaving || llmOptions.length === 0}
+                onChange={(e) => handleLlmChange(e.target.value)}
+              >
+                {llmOptions.length === 0 ? (
+                  <option value="">목록 없음</option>
+                ) : (
+                  llmOptions.map((o) => (
+                    <option key={o.id} value={o.id}>
+                      {o.label}
+                    </option>
+                  ))
+                )}
+              </select>
+              {llmSaving ? <p className="text-xs text-slate-500">모델 적용 중…</p> : null}
+              {llmContextErr && !llmSettingsErr ? <p className="text-xs text-rose-400">{llmContextErr}</p> : null}
+              {llmSettingsErr ? <p className="text-xs text-rose-400">{llmSettingsErr}</p> : null}
+            </div>
+          </div>
+        </PageCard>
+      </div>
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 sm:gap-4">
         <ConnectionStatusCard title="DB 연결 상태" status={health?.dbStatus} fallbackText="DB 연결 점검 필요" />

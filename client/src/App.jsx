@@ -1,4 +1,5 @@
 import { NavLink, Route, Routes } from 'react-router-dom';
+import { TopNav, LlmStatusPill } from './components/TopNav.jsx';
 import Dashboard from './pages/Dashboard.jsx';
 import Upload from './pages/Upload.jsx';
 import QuizMode from './pages/QuizMode.jsx';
@@ -115,6 +116,10 @@ export default function App() {
         </aside>
 
         <div className="flex min-w-0 flex-1 flex-col">
+          <div className="flex items-center justify-end border-b border-slate-800/80 bg-slate-950/95 px-3 py-2 backdrop-blur md:hidden">
+            <LlmStatusPill />
+          </div>
+          <TopNav />
           <header className="border-b border-slate-800/80 bg-slate-950/90 px-4 py-3 backdrop-blur md:hidden">
             <p className="text-xs font-medium uppercase tracking-widest text-accent">IT Cert</p>
             <h1 className="text-lg font-bold text-white">자격증 학습 플랫폼</h1>

@@ -1,6 +1,6 @@
 import { randomUUID } from 'crypto';
 import { prisma } from '../db.js';
-import { client, CHAT_MODEL, EMBED_MODEL } from './llm.js';
+import { client, getChatModel, EMBED_MODEL } from './llm.js';
 
 export async function embed(text) {
   const res = await client.embeddings.create({ model: EMBED_MODEL, input: text });
@@ -142,7 +142,7 @@ async function callQuestionsModel(prompt, maxRetry = 1) {
 
   for (let attempt = 0; attempt <= maxRetry; attempt += 1) {
     const res = await client.chat.completions.create({
-      model: CHAT_MODEL,
+      model: getChatModel(),
       messages: [{ role: 'user', content: prompt }],
       // 잘리는 경우를 줄이기 위해 여유를 조금 더 둡니다.
       max_tokens: 2600,

@@ -7,6 +7,7 @@ import { questionsRouter } from './routes/questions.js';
 import { examRouter } from './routes/exam.js';
 import { tutorRouter } from './routes/tutor.js';
 import { wrongRouter } from './routes/wrong.js';
+import { settingsRouter } from './routes/settings.js';
 import { checkLLMHealth } from './services/llm.js';
 
 const app = express();
@@ -48,6 +49,7 @@ app.use('/api', questionsRouter);
 app.use('/api', examRouter);
 app.use('/api', tutorRouter);
 app.use('/api', wrongRouter);
+app.use('/api', settingsRouter);
 
 async function bootstrap() {
   await prisma.$executeRawUnsafe('CREATE EXTENSION IF NOT EXISTS vector');
