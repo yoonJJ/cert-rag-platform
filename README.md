@@ -437,9 +437,9 @@ ollama ps
 ## 향후 확장 아이디어
 
 - 선택한 LLM을 **파일/DB에 영속화**해 재시작 후에도 유지
-- 사용자·인증 및 멀티테넌시
+- 사용자·인증 및 멀티테넌시 — [설계 노트: login.md](./login.md)
 - Redis를 활용한 시험 세션·레이트 리밋
-- 적응형 난이도·학습 스트릭 대시보드
+- 적응형 난이도·학습 스트릭 대시보드 — [설계 노트: adaptive-streak.md](./adaptive-streak.md)
 - 배포: Fly.io / Railway / AWS 등 + CI 파이프라인
 
 ---

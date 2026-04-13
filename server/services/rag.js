@@ -160,14 +160,24 @@ async function callQuestionsModel(prompt, maxRetry = 1) {
 }
 
 export async function generateQuestions(topic, examType, count = 5, source = '') {
-  const chunks = await retrieveChunks(topic, 5, source);
+  const chunks = await retrieveChunks(topic, 8, source);
   const context = chunks.map((c) => c.content).join('\n\n');
   const sourceDoc = formatSourceDoc(chunks);
   const prompt = `당신은 IT 자격증 시험 출제 전문가입니다.
 아래 내용을 바탕으로 ${examType} 시험 스타일의 문제를 ${count}개 생성하세요.
+사용자 요청을 최우선으로 반영하되, 반드시 참고 내용에 근거해서만 출제하세요.
 
 [참고 내용]
 ${context}
+
+[사용자 요청]
+${topic}
+
+규칙:
+- 사용자 요청 범위 밖의 문제를 만들지 마세요.
+- 참고 내용에서 근거를 찾을 수 없는 내용은 새로 지어내지 마세요.
+- 보기(options)는 반드시 4개를 생성하세요.
+- answer는 보기의 정답 번호로 0~3 정수로 출력하세요.
 
 출력 형식(JSON만):
 {

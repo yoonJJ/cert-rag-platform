@@ -3,6 +3,15 @@ import { prisma } from '../db.js';
 
 export const examRouter = Router();
 
+function normalizeAnswerIndex(answer, options) {
+  const size = Array.isArray(options) ? options.length : 0;
+  const n = Number(answer);
+  if (!Number.isFinite(n)) return 0;
+  if (size > 0 && n >= 0 && n < size) return n;
+  if (size > 0 && n >= 1 && n <= size) return n - 1;
+  return Math.max(0, n);
+}
+
 examRouter.post('/exam/grade', async (req, res) => {
   const { questions, answers, examType = 'PDF기반', source = '', command = '' } = req.body || {};
   if (!Array.isArray(questions) || !answers) return res.status(400).json({ error: 'questions, answers 필요' });
@@ -10,14 +19,15 @@ examRouter.post('/exam/grade', async (req, res) => {
   let correct = 0;
   const details = questions.map((q, idx) => {
     const picked = answers[q.id];
-    const ok = picked === q.answer;
+    const normalizedAnswer = normalizeAnswerIndex(q.answer, q.options);
+    const ok = picked === normalizedAnswer;
     if (ok) correct += 1;
     return {
       id: q.id,
       orderNo: idx + 1,
       correct: ok,
       picked: typeof picked === 'number' ? picked : -1,
-      answer: Number(q.answer),
+      answer: normalizedAnswer,
       question: q.question || '',
       options: Array.isArray(q.options) ? q.options : [],
       explanation: q.explanation || '',

@@ -5,6 +5,15 @@ import { getLlmSettingsSnapshot } from '../services/llm.js';
 
 export const questionsRouter = Router();
 
+function normalizeAnswerIndex(answer, options) {
+  const size = Array.isArray(options) ? options.length : 0;
+  const n = Number(answer);
+  if (!Number.isFinite(n)) return 0;
+  if (size > 0 && n >= 0 && n < size) return n;
+  if (size > 0 && n >= 1 && n <= size) return n - 1;
+  return Math.max(0, n);
+}
+
 questionsRouter.get('/vector/search', async (req, res) => {
   try {
     const query = String(req.query?.query || '').trim();
@@ -34,7 +43,7 @@ questionsRouter.post('/questions/generate', async (req, res) => {
         data: {
           content: q.question,
           options: q.options,
-          answer: Number(q.answer),
+          answer: normalizeAnswerIndex(q.answer, q.options),
           explanation: q.explanation || '',
           topic: q.topic || resolvedTopic,
           difficulty: q.difficulty || '중',
