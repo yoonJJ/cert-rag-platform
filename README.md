@@ -52,7 +52,21 @@
 | **AI 튜터** | 선택한 오답 맥락으로 스트리밍 해설 |
 | **청크 뷰어** | 벡터 검색 디버그용 (`/api/vector/search` 등) |
 
-> 스크린샷을 넣고 싶다면 `README`에 `![대시보드](./docs/screenshots/dashboard.png)` 형태로 이미지를 추가하면 포트폴리오 완성도가 올라갑니다.
+### 주요 화면 스크린샷
+
+**PDF 업로드**
+
+![PDF 업로드 완료](./docs/screenshots/upload-success.png)
+![업로드된 PDF 목록](./docs/screenshots/upload-list.png)
+
+**문제 풀이 + AI 튜터**
+
+![문제 풀이 화면](./docs/screenshots/quiz-screen.png)
+![AI 튜터 해설 화면](./docs/screenshots/tutor-screen.png)
+
+**청크/메타데이터 뷰어**
+
+![청크 메타데이터 뷰어](./docs/screenshots/vector-viewer.png)
 
 ---
 
