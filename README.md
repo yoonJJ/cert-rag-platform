@@ -3,7 +3,7 @@
 **RAG + 로컬 LLM으로 PDF 기출·교재를 바로 문제로 바꾸는 풀스택 학습 웹앱**
 
 [![React](https://img.shields.io/badge/React-19+-61DAFB?logo=react&logoColor=black)](https://react.dev/)
-[![Vite](https://img.shields.io/badge/Vite-latest-646CFF?logo=vite&logoColor=white)](https://vitejs.dev/)
+[![Vite](https://img.shields.io/badge/Vite-8-646CFF?logo=vite&logoColor=white)](https://vitejs.dev/)
 [![Node.js](https://img.shields.io/badge/Node.js-Express-339933?logo=node.js&logoColor=white)](https://expressjs.com/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-pgvector-4169E1?logo=postgresql&logoColor=white)](https://github.com/pgvector/pgvector)
 [![Prisma](https://img.shields.io/badge/Prisma-ORM-2D3748?logo=prisma&logoColor=white)](https://www.prisma.io/)
@@ -455,6 +455,17 @@ ollama ps
 - Redis를 활용한 시험 세션·레이트 리밋
 - 적응형 난이도·학습 스트릭 대시보드 — [설계 노트: adaptive-streak.md](./adaptive-streak.md)
 - 배포: Fly.io / Railway / AWS 등 + CI 파이프라인
+
+---
+
+## 보안 점검 이력
+
+- **2026-06-11** — `npm audit` 기준 client/server 취약점 0건으로 정리
+  - **CVE-2025-55182 (React2Shell)**: Next.js/React Server Components 미사용으로 비해당 확인 (React 19.2.4)
+  - client: `react-router-dom` 7.17.0 (turbo-stream 역직렬화 RCE 등 수정), `vite` 8.0.16 (dev 서버 파일 노출 수정), `postcss` 8.5.15
+  - server: `qs`·`defu`·`effect`(prisma 전이 의존성) 등 호환 범위 내 갱신
+  - 주요 의존성을 `latest` 선언에서 명시적 버전 범위로 고정해 재현 가능한 설치 확보
+  - 인프라: Docker Desktop 4.77.0 (Linux 커널 CopyFail, CVE-2026-31431 패치 포함)
 
 ---
 
