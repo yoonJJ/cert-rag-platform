@@ -1,0 +1,17 @@
+[
+  {
+    "query": "트랜잭션의 ACID 특성을 묻는 문제",
+    "source": "SQLD_요약.pdf",
+    "relevantPages": [12, 13]
+  },
+  {
+    "query": "정규화 1NF, 2NF, 3NF의 차이",
+    "source": "SQLD_요약.pdf",
+    "relevantPages": [20, 21, 22]
+  },
+  {
+    "query": "인덱스 B-Tree 구조와 동작 원리",
+    "source": "SQLD_요약.pdf",
+    "relevantPages": [34]
+  }
+]

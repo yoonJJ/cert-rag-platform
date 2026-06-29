@@ -142,6 +142,28 @@ flowchart TB
 
 ---
 
+## 검색 품질 평가 (Evaluation)
+
+RAG 시스템은 "동작한다"로 끝나면 안 되고 **얼마나 잘 검색·생성하는지 측정**되어야 한다고 보았습니다.
+그래서 검색 품질을 표준 정보검색(IR) 지표로 정량 측정하는 평가 레이어를 추가했습니다. (`server/eval/`)
+
+- **측정 지표**: Recall@k · Precision@k · nDCG@k · Hit@k · MRR (k = 3, 5, 10)
+- **관련도 기준**: 정답 근거가 실린 PDF 페이지를 골드셋으로 두고, 검색된 청크의 페이지가 일치하면 관련으로 판정 (페이지 단위 관련도)
+- **비교 실험**: `RUN_TAG`로 청크 크기·top-k·임베딩 모델을 바꿔 실행하고 결과를 비교해 트레이드오프를 분석
+- **결과 저장**: 콘솔 표 + `eval/results/*.json|csv`
+
+```bash
+cd server
+node eval/retrieval_eval.js                       # 기본 실행
+RUN_TAG=topk5_chunk650 node eval/retrieval_eval.js # 실험 태그별 저장
+```
+
+> 로드맵: (2주차) **LLM-as-a-Judge** 기반 생성 품질 평가(근거성·정답정확성·답변가능성·오답매력도·난이도)와
+> **판정자 신뢰성 검증**(사람 vs LLM-Judge 일치도, Cohen's κ)을 추가할 예정입니다.
+> 자세한 내용은 [`server/eval/README.md`](server/eval/README.md) 참고.
+
+---
+
 ## 프로젝트 구조
 
 ```text
@@ -156,6 +178,7 @@ AIProject/
 │  ├─ index.js                 # Express, health, 라우터 마운트
 │  ├─ routes/                  # upload, questions, exam, tutor, wrong, settings
 │  ├─ services/                # llm, rag, chunker
+│  ├─ eval/                    # RAG 검색 품질 평가(IR 지표) + 골드셋
 │  └─ prisma/schema.prisma
 ├─ ppt/                        # (선택) 포트폴리오 HTML / PDF보내기 스크립트
 └─ docs/                       # 스택 아이콘 등 에셋

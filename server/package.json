@@ -6,7 +6,8 @@
     "dev": "nodemon index.js",
     "start": "node index.js",
     "prisma:generate": "prisma generate",
-    "prisma:migrate": "prisma migrate dev --name init"
+    "prisma:migrate": "prisma migrate dev --name init",
+    "eval:retrieval": "node eval/retrieval_eval.js"
   },
   "dependencies": {
     "@napi-rs/canvas": "^1.0.0",

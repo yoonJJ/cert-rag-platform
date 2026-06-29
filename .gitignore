@@ -30,6 +30,9 @@ Thumbs.db
 coverage/
 .nyc_output/
 
+# Eval 결과물(실행 시 생성) — 코드·골드셋만 커밋
+server/eval/results/
+
 # Editor / tooling (optional noise)
 *.swp
 *.swo
