@@ -9,6 +9,7 @@
     "prisma:migrate": "prisma migrate dev --name init"
   },
   "dependencies": {
+    "@napi-rs/canvas": "^1.0.0",
     "@prisma/client": "^6.19.2",
     "cors": "latest",
     "dotenv": "latest",
@@ -16,7 +17,8 @@
     "ioredis": "latest",
     "multer": "latest",
     "openai": "latest",
-    "pdf-parse": "^1.1.1"
+    "pdf-parse": "^1.1.1",
+    "pdfjs-dist": "^5.7.284"
   },
   "devDependencies": {
     "nodemon": "latest",

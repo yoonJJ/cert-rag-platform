@@ -8,7 +8,7 @@ export function LlmStatusProvider({ children }) {
   const [model, setModel] = useState('');
   const [apiModel, setApiModel] = useState('');
   const [label, setLabel] = useState('');
-  const [provider, setProvider] = useState('ollama');
+  const [provider, setProvider] = useState('openai');
   const [options, setOptions] = useState([]);
   const [keyStatus, setKeyStatus] = useState({ openai: false, gemini: false, claude: false });
   const [keyHints, setKeyHints] = useState({ openai: null, gemini: null, claude: null });
@@ -27,7 +27,7 @@ export function LlmStatusProvider({ children }) {
       setModel(data.model || '');
       setApiModel(data.apiModel || '');
       setLabel(data.label || data.apiModel || '');
-      setProvider(data.provider || 'ollama');
+      setProvider(data.provider || 'openai');
       setOptions(Array.isArray(data.options) ? data.options : []);
       setKeyStatus(data.keyStatus || { openai: false, gemini: false, claude: false });
       setKeyHints(data.keyHints || { openai: null, gemini: null, claude: null });

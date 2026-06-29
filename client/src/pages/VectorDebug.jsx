@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { apiJson } from '../lib/api.js';
 import { PageCard, PageContainer, PageHeader } from '../components/PageLayout.jsx';
+import MathText from '../components/MathText.jsx';
 
 export default function VectorDebug() {
   const [source, setSource] = useState('');
@@ -109,7 +110,7 @@ export default function VectorDebug() {
               {meta.sampleChunks.map((c) => (
                 <li key={c.id} className="rounded-md border border-slate-700/80 bg-slate-950/60 px-3 py-2">
                   <p className="text-[11px] text-slate-500">p.{c.page}</p>
-                  <p className="mt-1 text-xs text-slate-300">{c.preview || '(내용 없음)'}</p>
+                  <MathText className="mt-1 block text-xs text-slate-300">{c.preview || '(내용 없음)'}</MathText>
                 </li>
               ))}
             </ul>
@@ -134,7 +135,7 @@ export default function VectorDebug() {
                   <span>#{offset + idx + 1}</span>
                   <span>p.{r.page ?? '-'}</span>
                 </div>
-                <p className="mt-2 text-sm text-slate-200">{r.preview}</p>
+                <MathText className="mt-2 block text-sm text-slate-200">{r.preview}</MathText>
               </li>
             ))}
           </ul>

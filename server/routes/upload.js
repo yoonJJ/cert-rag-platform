@@ -4,7 +4,8 @@ import { createRequire } from 'module';
 import { prisma } from '../db.js';
 import { chunkText } from '../services/chunker.js';
 import { saveChunk } from '../services/rag.js';
-import { createChatCompletion } from '../services/llm.js';
+import { createChatCompletion, captionImage } from '../services/llm.js';
+import { renderPdfPages } from '../services/pdfImages.js';
 
 const require = createRequire(import.meta.url);
 const pdfParse = require('pdf-parse');
@@ -80,10 +81,81 @@ uploadRouter.post('/upload', upload.single('pdf'), async (req, res) => {
       await saveChunk({ content: chunks[i], source, page: i + 1 });
     }
 
-    res.json({ ok: true, source, chunkCount: chunks.length });
+    // (옵션) PDF 페이지를 이미지로 렌더링해 비전 모델로 캡셔닝 → 도표/다이어그램/스캔본도 임베딩.
+    // 페이지당 비전 호출이 발생하므로 클라이언트에서 명시적으로 켤 때만 수행합니다.
+    // 실패해도 텍스트 업로드 자체는 성공 처리합니다.
+    const wantImages = ['1', 'true', 'on', 'yes'].includes(String(req.body?.captionImages || '').toLowerCase());
+    let imageChunkCount = 0;
+    let imagePagesCaptioned = 0;
+    let imageNote = '';
+    if (wantImages) {
+      try {
+        const { pages, totalPages, truncated } = await renderPdfPages(req.file.buffer);
+        for (const pg of pages) {
+          try {
+            const caption = await captionImage(
+              pg.png,
+              'image/png',
+              `"${source}" 문서의 ${pg.pageNumber}페이지(전체 ${totalPages}p)입니다.`,
+            );
+            if (!caption) continue;
+            const imgChunks = chunkText(caption);
+            for (const c of imgChunks) {
+              await saveChunk({ content: `[p.${pg.pageNumber} 페이지 이미지 설명]\n${c}`, source, page: pg.pageNumber });
+              imageChunkCount += 1;
+            }
+            imagePagesCaptioned += 1;
+          } catch (capErr) {
+            console.error(`이미지 캡셔닝 실패 (p.${pg.pageNumber}):`, capErr.message);
+          }
+        }
+        if (truncated) imageNote = `이미지 캡셔닝은 상한(${pages.length}p)까지만 처리했습니다. (전체 ${totalPages}p)`;
+      } catch (imgErr) {
+        console.error('PDF 이미지 렌더링 실패:', imgErr.message);
+        imageNote = '이미지 캡셔닝 중 오류가 발생해 텍스트만 저장했습니다.';
+      }
+    }
+
+    res.json({
+      ok: true,
+      source,
+      chunkCount: chunks.length,
+      imagePagesCaptioned,
+      imageChunkCount,
+      ...(imageNote ? { imageNote } : {}),
+    });
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: e.message || '업로드 실패' });
+  }
+});
+
+const IMAGE_MIME = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/gif']);
+
+// 이미지 업로드: 비전 모델로 캡셔닝 → 설명 텍스트를 기존 청크/임베딩 파이프라인에 합류.
+uploadRouter.post('/upload-image', upload.single('image'), async (req, res) => {
+  try {
+    if (!req.file?.buffer) return res.status(400).json({ error: '이미지 파일이 필요합니다.' });
+    const mime = req.file.mimetype || '';
+    if (!IMAGE_MIME.has(mime)) {
+      return res.status(400).json({ error: '지원하지 않는 이미지 형식입니다. (png/jpg/webp/gif)' });
+    }
+
+    const source = req.body?.sourceName || req.file.originalname || 'image-upload';
+    const hint = String(req.body?.hint || '').trim();
+
+    const caption = await captionImage(req.file.buffer, mime, hint);
+    if (!caption) return res.status(422).json({ error: '이미지에서 설명을 추출하지 못했습니다.' });
+
+    const chunks = chunkText(caption);
+    for (let i = 0; i < chunks.length; i += 1) {
+      await saveChunk({ content: chunks[i], source, page: i + 1 });
+    }
+
+    res.json({ ok: true, source, chunkCount: chunks.length, captionPreview: caption.slice(0, 280) });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: e.message || '이미지 업로드 실패' });
   }
 });
 

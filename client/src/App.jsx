@@ -77,8 +77,8 @@ export default function App() {
         <aside className="sticky top-0 hidden h-screen w-72 shrink-0 border-r border-slate-800/80 bg-slate-950/95 backdrop-blur md:block">
           <div className="flex h-full flex-col p-4">
             <div className="border-b border-slate-800/80 pb-4">
-              <p className="text-xs font-medium uppercase tracking-widest text-accent">IT Cert</p>
-              <h1 className="text-lg font-bold text-white">자격증 학습 플랫폼</h1>
+              <p className="text-xs font-medium uppercase tracking-widest text-accent">Exam</p>
+              <h1 className="text-lg font-bold text-white">시험 플랫폼</h1>
               <p className="mt-1 text-xs text-slate-400">매일 20분, 합격까지 한 걸음</p>
             </div>
 
@@ -121,8 +121,8 @@ export default function App() {
           </div>
           <TopNav />
           <header className="border-b border-slate-800/80 bg-slate-950/90 px-4 py-3 backdrop-blur md:hidden">
-            <p className="text-xs font-medium uppercase tracking-widest text-accent">IT Cert</p>
-            <h1 className="text-lg font-bold text-white">자격증 학습 플랫폼</h1>
+            <p className="text-xs font-medium uppercase tracking-widest text-accent">Exam</p>
+            <h1 className="text-lg font-bold text-white">시험 플랫폼</h1>
             <nav className="mt-3 grid grid-cols-2 gap-2">
               {nav.map(({ to, label, icon }) => (
                 <NavLink

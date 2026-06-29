@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { apiJson } from '../lib/api.js';
 import QuestionCard from '../components/QuestionCard.jsx';
 import TutorPanel from '../components/TutorPanel.jsx';
+import MathText from '../components/MathText.jsx';
 import { EmptyState, PageCard, PageContainer, PageHeader } from '../components/PageLayout.jsx';
 
 export default function QuizMode() {
@@ -158,8 +159,8 @@ export default function QuizMode() {
           </div>
           {showKey ? (
             <div className="rounded-lg border border-slate-600 bg-slate-900/80 p-4 text-sm text-slate-300">
-              <p>정답: {q.options?.[q.answer] ?? q.answer}</p>
-              <p className="mt-2 whitespace-pre-wrap text-slate-400">{q.explanation}</p>
+              <p>정답: <MathText>{q.options?.[q.answer] ?? String(q.answer)}</MathText></p>
+              <MathText className="mt-2 block text-slate-400">{q.explanation}</MathText>
               {q.sourceDoc ? <p className="mt-3 text-xs text-slate-500">출처: {q.sourceDoc}</p> : null}
             </div>
           ) : null}

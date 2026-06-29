@@ -1,9 +1,11 @@
+import MathText from './MathText.jsx';
+
 export default function QuestionCard({ question, options, selected, onSelect, disabled }) {
   const list = Array.isArray(options) ? options : [];
 
   return (
     <div className="rounded-xl border border-slate-700/80 bg-slate-900/50 p-5 shadow-lg">
-      <p className="text-base font-medium leading-relaxed text-slate-100">{question}</p>
+      <MathText className="block text-base font-medium leading-relaxed text-slate-100">{question}</MathText>
       <ul className="mt-4 space-y-2">
         {list.map((opt, i) => {
           const active = selected === i;
@@ -19,7 +21,7 @@ export default function QuestionCard({ question, options, selected, onSelect, di
                     : 'border-slate-600 bg-slate-950/60 text-slate-300 hover:border-slate-500'
                 } ${disabled ? 'cursor-default opacity-80' : ''}`}
               >
-                {opt}
+                <MathText>{opt}</MathText>
               </button>
             </li>
           );

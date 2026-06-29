@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { prisma } from '../db.js';
-import { generateQuestions, searchChunksDebug } from '../services/rag.js';
+import { generateQuestions, generateExam, searchChunksDebug } from '../services/rag.js';
 import { getLlmSettingsSnapshot } from '../services/llm.js';
 
 export const questionsRouter = Router();
@@ -33,9 +33,18 @@ questionsRouter.post('/questions/generate', async (req, res) => {
   try {
     const { topic, command, examType, count = 5, source = '' } = req.body || {};
     const resolvedTopic = String(command || topic || '').trim();
-    if (!resolvedTopic || !examType) return res.status(400).json({ error: 'examType, command 필요' });
+    const resolvedSource = String(source || '').trim();
+    if (!examType) return res.status(400).json({ error: 'examType 필요' });
 
-    const generated = await generateQuestions(resolvedTopic, examType, Number(count), source);
+    // 자연어 명령이 있으면 기존 방식(문제풀기), 없으면 과목(파일) 전체 기반 시험 생성.
+    let generated;
+    if (resolvedTopic) {
+      generated = await generateQuestions(resolvedTopic, examType, Number(count), resolvedSource);
+    } else if (resolvedSource) {
+      generated = await generateExam(resolvedSource, examType, Number(count));
+    } else {
+      return res.status(400).json({ error: 'command 또는 source 중 하나는 필요합니다.' });
+    }
     const questions = [];
 
     for (const q of generated) {
@@ -45,7 +54,7 @@ questionsRouter.post('/questions/generate', async (req, res) => {
           options: q.options,
           answer: normalizeAnswerIndex(q.answer, q.options),
           explanation: q.explanation || '',
-          topic: q.topic || resolvedTopic,
+          topic: q.topic || resolvedTopic || resolvedSource,
           difficulty: q.difficulty || '중',
           examType,
           sourceDoc: q.sourceDoc || 'rag-generated',

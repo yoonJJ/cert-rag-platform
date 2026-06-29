@@ -82,7 +82,6 @@ export default function Dashboard() {
   const [keySaving, setKeySaving] = useState(false);
   const [keyErr, setKeyErr] = useState('');
 
-  const ollamaOptions = useMemo(() => llmOptions.filter((o) => o.provider === 'ollama'), [llmOptions]);
   const openaiOptions = useMemo(() => llmOptions.filter((o) => o.provider === 'openai'), [llmOptions]);
   const geminiOptions = useMemo(() => llmOptions.filter((o) => o.provider === 'gemini'), [llmOptions]);
   const claudeOptions = useMemo(() => llmOptions.filter((o) => o.provider === 'claude'), [llmOptions]);
@@ -239,9 +238,9 @@ export default function Dashboard() {
               </p>
               <p className="mt-1 break-all font-mono text-[11px] text-slate-500">옵션 ID: {llmModel || '—'}</p>
               <p className="mt-3 text-xs text-slate-500">
-                문제 생성 · PDF 토픽 추론 · AI 튜터에 동일하게 적용됩니다. 임베딩은 항상 Ollama{' '}
-                <span className="font-mono text-slate-400">nomic-embed-text</span>입니다. 선택·API 키는 서버 메모리에만
-                있으며 재시작 시 초기화됩니다.
+                문제 생성 · PDF 토픽 추론 · AI 튜터에 동일하게 적용됩니다. 임베딩은 OpenAI{' '}
+                <span className="font-mono text-slate-400">text-embedding-3-small</span>를 사용하므로 RAG 기능에는
+                OpenAI API 키가 필요합니다. 선택·API 키는 서버 메모리에만 있으며 재시작 시 초기화됩니다.
               </p>
             </div>
             <div className="flex w-full flex-col justify-center gap-3 lg:max-w-md">
@@ -260,15 +259,6 @@ export default function Dashboard() {
                     <option value="">목록 없음</option>
                   ) : (
                     <>
-                      {ollamaOptions.length > 0 ? (
-                        <optgroup label="Ollama (로컬)">
-                          {ollamaOptions.map((o) => (
-                            <option key={o.id} value={o.id}>
-                              {o.label}
-                            </option>
-                          ))}
-                        </optgroup>
-                      ) : null}
                       {openaiOptions.length > 0 ? (
                         <optgroup label="OpenAI (API 키)">
                           {openaiOptions.map((o) => (
