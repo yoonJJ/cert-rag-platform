@@ -10,7 +10,7 @@ from starlette.datastructures import UploadFile as StarletteUploadFile
 from app import db
 from app.http import error
 from app.services import documents
-from app.services.chunker import chunk_pages, chunk_text
+from app.services.chunker import chunk_markdown, chunk_pages, chunk_text
 from app.services.llm import caption_image, create_chat_completion
 from app.services.pdf import extract_pages, render_pdf_pages
 from app.utils import clamp, collapse_ws, num_or
@@ -177,6 +177,63 @@ async def upload_pdf(request: Request):
     except Exception as e:  # noqa: BLE001
         log.exception("업로드 실패")
         return error(500, str(e) or "업로드 실패")
+
+
+# 오프라인 변환(scripts/ingest.py)으로 만든 rag_markdown.md 업로드.
+# <!-- page: N --> 표시로 실제 페이지를 유지하고, 제목·표·코드블록 구조 기준으로 청킹합니다.
+@router.post("/upload-markdown")
+async def upload_markdown(request: Request):
+    try:
+        fields, file, data = await _read_upload(request, "markdown")
+        if not data:
+            return error(400, "마크다운 파일이 필요합니다.")
+        if len(data) > MAX_FILE_SIZE:
+            return error(413, "파일이 너무 큽니다. (최대 20MB)")
+        try:
+            md = data.decode("utf-8")
+        except UnicodeDecodeError:
+            return error(400, "UTF-8 마크다운 파일이 아닙니다.")
+
+        # 보통 원본 PDF 이름(sourceName)으로 올려 PDF 업로드 문서를 그대로 교체합니다.
+        source = _source_name(fields, file, "document.md")
+        digest = documents.file_hash(data)
+        existing = await documents.find_by_source(source)
+        if existing and existing["fileHash"] == digest:
+            return {
+                "ok": True,
+                "source": source,
+                "chunkCount": existing["chunkCount"],
+                "pageCount": existing["pageCount"],
+                "skipped": True,
+                "replaced": False,
+            }
+
+        text_chunks = chunk_markdown(md)
+        if not text_chunks:
+            return error(400, "마크다운에서 본문을 찾지 못했습니다.")
+        page_marks = [int(n) for n in re.findall(r"^<!--\s*page:\s*(\d+)\s*-->", md, re.M)]
+        page_count = max(page_marks) if page_marks else None
+
+        chunks = await documents.embed_chunks(text_chunks)
+        saved = await documents.replace_document(
+            source=source,
+            file_hash=digest,
+            mime_type="text/markdown",
+            page_count=page_count,
+            chunks=chunks,
+            image_captioned=False,
+        )
+        return {
+            "ok": True,
+            "source": source,
+            "chunkCount": len(text_chunks),
+            "pageCount": page_count,
+            "skipped": False,
+            "replaced": saved["replaced"],
+        }
+    except Exception as e:  # noqa: BLE001
+        log.exception("마크다운 업로드 실패")
+        return error(500, str(e) or "마크다운 업로드 실패")
 
 
 # 이미지 업로드: 비전 모델로 캡셔닝 → 설명 텍스트를 기존 청크/임베딩 파이프라인에 합류.

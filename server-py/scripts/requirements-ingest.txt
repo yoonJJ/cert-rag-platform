@@ -1,0 +1,5 @@
+# scripts/ingest.py 전용 (서버 이미지에는 넣지 않습니다)
+# Marker 2.x 는 OCR 에 llama.cpp 바이너리가 필요해 맥에서 바로 도는 1.x 를 고정합니다.
+marker-pdf==1.10.2
+pymupdf==1.25.5
+google-genai==1.75.0
