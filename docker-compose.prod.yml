@@ -23,7 +23,8 @@ services:
     restart: unless-stopped
 
   server:
-    build: ./server
+    # FastAPI 백엔드 (기존 Express 버전은 ./server 에 보관)
+    build: ./server-py
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-user}:${POSTGRES_PASSWORD:-password}@postgres:5432/${POSTGRES_DB:-certdb}?schema=public
       REDIS_URL: redis://redis:6379

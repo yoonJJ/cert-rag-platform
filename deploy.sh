@@ -62,10 +62,13 @@ rsync -az --delete \
   -e "${RSYNC_SSH}" \
   --exclude '.git' \
   --exclude 'node_modules' \
+  --exclude '.venv' \
+  --exclude '__pycache__' \
   --exclude 'dist' \
   --exclude '.env' \
   --exclude '.env.prod' \
   --exclude 'server/.env' \
+  --exclude 'server-py/.env' \
   --exclude 'client/.env' \
   --exclude '*.log' \
   ./ "${SSH_TARGET}:${REMOTE_DIR}/"

@@ -1,4 +1,4 @@
-import { NavLink, Route, Routes } from 'react-router-dom';
+import { Navigate, NavLink, Route, Routes } from 'react-router-dom';
 import { TopNav, LlmStatusPill } from './components/TopNav.jsx';
 import Dashboard from './pages/Dashboard.jsx';
 import Upload from './pages/Upload.jsx';
@@ -7,13 +7,23 @@ import ExamMode from './pages/ExamMode.jsx';
 import WrongNote from './pages/WrongNote.jsx';
 import VectorDebug from './pages/VectorDebug.jsx';
 
-const nav = [
-  { to: '/', label: '대시보드', icon: 'dashboard' },
-  { to: '/upload', label: 'PDF 업로드', icon: 'upload' },
-  { to: '/quiz', label: '문제 풀기', icon: 'quiz' },
-  { to: '/exam', label: '시험', icon: 'exam' },
-  { to: '/wrong', label: '오답 노트', icon: 'wrong' },
-  { to: '/vector-debug', label: '청크 뷰어', icon: 'search' },
+const navGroups = [
+  {
+    title: '학습',
+    items: [
+      { to: '/', label: '대시보드', icon: 'dashboard' },
+      { to: '/quiz', label: '문제 풀기', icon: 'quiz' },
+      { to: '/exam', label: '시험', icon: 'exam' },
+      { to: '/wrong', label: '오답 노트', icon: 'wrong' },
+    ],
+  },
+  {
+    title: '지식베이스',
+    items: [
+      { to: '/documents', label: '문서', icon: 'document' },
+      { to: '/vector-debug', label: '청크 뷰어', icon: 'search' },
+    ],
+  },
 ];
 
 function MenuIcon({ name }) {
@@ -26,11 +36,12 @@ function MenuIcon({ name }) {
         <path d="M3.75 13.75h6.5v6.5h-6.5z" />
       </>
     ),
-    upload: (
+    document: (
       <>
-        <path d="M12 16V5.5" />
-        <path d="m8.5 9 3.5-3.5L15.5 9" />
-        <path d="M5 16.75v1.5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-1.5" />
+        <path d="M13.75 3.75H7.25a2 2 0 0 0-2 2v12.5a2 2 0 0 0 2 2h9.5a2 2 0 0 0 2-2V8.75z" />
+        <path d="M13.75 3.75v5h5" />
+        <path d="M9 13h6" />
+        <path d="M9 16.25h4" />
       </>
     ),
     quiz: (
@@ -82,34 +93,36 @@ export default function App() {
               <p className="mt-1 text-xs text-slate-400">매일 20분, 합격까지 한 걸음</p>
             </div>
 
-            <div className="mt-5">
-              <p className="mb-2 px-2 text-xs font-semibold uppercase tracking-wide text-slate-500">학습 메뉴</p>
-              <nav className="space-y-1">
-                {nav.map(({ to, label, icon }) => (
-                  <NavLink
-                    key={to}
-                    to={to}
-                    end={to === '/'}
-                    className={({ isActive }) =>
-                      `group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition ${
-                        isActive
-                          ? 'bg-accent/90 text-white shadow-[0_4px_18px_rgba(14,165,233,0.22)]'
-                          : 'text-slate-300 hover:bg-slate-800/90 hover:text-white'
-                      }`
-                    }
-                    title={label}
-                  >
-                    <span
-                      aria-hidden
-                      className="flex h-6 w-6 items-center justify-center rounded-md bg-slate-900/50 text-base group-hover:bg-slate-900/80"
+            {navGroups.map((group) => (
+              <div key={group.title} className="mt-5">
+                <p className="mb-2 px-2 text-xs font-semibold uppercase tracking-wide text-slate-500">{group.title}</p>
+                <nav className="space-y-1">
+                  {group.items.map(({ to, label, icon }) => (
+                    <NavLink
+                      key={to}
+                      to={to}
+                      end={to === '/'}
+                      className={({ isActive }) =>
+                        `group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition ${
+                          isActive
+                            ? 'bg-accent/90 text-white shadow-[0_4px_18px_rgba(14,165,233,0.22)]'
+                            : 'text-slate-300 hover:bg-slate-800/90 hover:text-white'
+                        }`
+                      }
+                      title={label}
                     >
-                      <MenuIcon name={icon} />
-                    </span>
-                    <span className="truncate">{label}</span>
-                  </NavLink>
-                ))}
-              </nav>
-            </div>
+                      <span
+                        aria-hidden
+                        className="flex h-6 w-6 items-center justify-center rounded-md bg-slate-900/50 text-base group-hover:bg-slate-900/80"
+                      >
+                        <MenuIcon name={icon} />
+                      </span>
+                      <span className="truncate">{label}</span>
+                    </NavLink>
+                  ))}
+                </nav>
+              </div>
+            ))}
 
             <div className="mt-auto border-t border-slate-800/80 pt-4" />
           </div>
@@ -123,31 +136,38 @@ export default function App() {
           <header className="border-b border-slate-800/80 bg-slate-950/90 px-4 py-3 backdrop-blur md:hidden">
             <p className="text-xs font-medium uppercase tracking-widest text-accent">Exam</p>
             <h1 className="text-lg font-bold text-white">시험 플랫폼</h1>
-            <nav className="mt-3 grid grid-cols-2 gap-2">
-              {nav.map(({ to, label, icon }) => (
-                <NavLink
-                  key={to}
-                  to={to}
-                  end={to === '/'}
-                  className={({ isActive }) =>
-                    `flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium transition ${
-                      isActive ? 'bg-accent text-white' : 'bg-slate-900 text-slate-300 hover:bg-slate-800 hover:text-white'
-                    }`
-                  }
-                >
-                  <span aria-hidden className="flex h-5 w-5 items-center justify-center text-slate-300">
-                    <MenuIcon name={icon} />
-                  </span>
-                  <span className="truncate">{label}</span>
-                </NavLink>
-              ))}
-            </nav>
+            {navGroups.map((group) => (
+              <div key={group.title} className="mt-3">
+                <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500">{group.title}</p>
+                <nav className="grid grid-cols-2 gap-2">
+                  {group.items.map(({ to, label, icon }) => (
+                    <NavLink
+                      key={to}
+                      to={to}
+                      end={to === '/'}
+                      className={({ isActive }) =>
+                        `flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium transition ${
+                          isActive ? 'bg-accent text-white' : 'bg-slate-900 text-slate-300 hover:bg-slate-800 hover:text-white'
+                        }`
+                      }
+                    >
+                      <span aria-hidden className="flex h-5 w-5 items-center justify-center text-slate-300">
+                        <MenuIcon name={icon} />
+                      </span>
+                      <span className="truncate">{label}</span>
+                    </NavLink>
+                  ))}
+                </nav>
+              </div>
+            ))}
           </header>
 
           <main className="min-w-0 flex-1 px-4 py-8 md:px-8">
             <Routes>
               <Route path="/" element={<Dashboard />} />
-              <Route path="/upload" element={<Upload />} />
+              <Route path="/documents" element={<Upload />} />
+              {/* 예전 주소(북마크) 호환 */}
+              <Route path="/upload" element={<Navigate to="/documents" replace />} />
               <Route path="/quiz" element={<QuizMode />} />
               <Route path="/exam" element={<ExamMode />} />
               <Route path="/wrong" element={<WrongNote />} />

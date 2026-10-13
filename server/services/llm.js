@@ -87,6 +87,12 @@ function isReasoningModel(model) {
 const REASONING_EFFORT = 'minimal';
 
 export function getEmbedClient() {
+  // 임베딩 제공자를 EMBED_BASE_URL 로 바꿔 끼울 수 있습니다(OpenAI 호환 엔드포인트).
+  // 예: 로컬 Ollama nomic-embed-text → EMBED_BASE_URL=http://localhost:11434/v1
+  const baseURL = String(process.env.EMBED_BASE_URL || '').trim();
+  if (baseURL) {
+    return new OpenAI({ baseURL, apiKey: String(process.env.EMBED_API_KEY || 'ollama').trim() });
+  }
   if (!providerApiKeys.openai) throw new Error('임베딩을 위해 OpenAI API 키를 입력해 주세요.');
   return new OpenAI({ apiKey: providerApiKeys.openai });
 }

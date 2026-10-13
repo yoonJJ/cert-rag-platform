@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { PageCard, PageContainer, PageHeader } from '../components/PageLayout.jsx';
 
 const apiBase = import.meta.env.VITE_API_URL || '';
@@ -11,6 +12,7 @@ export default function Upload() {
   const [files, setFiles] = useState([]);
   const [loadingFiles, setLoadingFiles] = useState(false);
   const [filesErr, setFilesErr] = useState('');
+  const [deleting, setDeleting] = useState('');
 
   const [image, setImage] = useState(null);
   const [hint, setHint] = useState('');
@@ -107,13 +109,22 @@ export default function Upload() {
       const res = await fetch(`${apiBase}/api/upload`, { method: 'POST', body: form });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || '실패');
+      if (data.skipped) {
+        setStatus({
+          type: 'success',
+          message: `이미 같은 파일이 등록되어 있어 건너뛰었습니다: ${data.source} (청크 ${data.chunkCount}개)`,
+        });
+        return;
+      }
       const imgPart =
         data.imagePagesCaptioned > 0
           ? ` · 이미지 ${data.imagePagesCaptioned}p 캡셔닝(청크 ${data.imageChunkCount}개)`
           : '';
       setStatus({
         type: 'success',
-        message: `업로드 완료: ${data.source} (텍스트 청크 ${data.chunkCount}개${imgPart})${
+        message: `${data.replaced ? '기존 문서를 교체했습니다' : '업로드 완료'}: ${data.source} (${
+          data.pageCount ? `${data.pageCount}페이지 · ` : ''
+        }텍스트 청크 ${data.chunkCount}개${imgPart})${
           data.imageNote ? `\n${data.imageNote}` : ''
         }`,
       });
@@ -125,13 +136,29 @@ export default function Upload() {
     }
   }
 
+  async function onDelete(source) {
+    if (!window.confirm(`"${source}" 문서와 청크를 모두 삭제할까요?`)) return;
+    setDeleting(source);
+    setFilesErr('');
+    try {
+      const res = await fetch(`${apiBase}/api/sources?source=${encodeURIComponent(source)}`, { method: 'DELETE' });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || '삭제 실패');
+      await loadUploadedFiles();
+    } catch (err) {
+      setFilesErr(err.message || '문서를 삭제하지 못했습니다.');
+    } finally {
+      setDeleting('');
+    }
+  }
+
   useEffect(() => {
     loadUploadedFiles();
   }, []);
 
   return (
     <PageContainer>
-      <PageHeader title="PDF 업로드" description="파일 선택 후 한 번에 임베딩까지 처리합니다." />
+      <PageHeader title="문서" description="PDF·이미지를 올려 지식베이스에 추가하고, 등록된 문서를 교체하거나 삭제합니다." />
 
       <PageCard className="mt-8 p-5 sm:p-6">
         <form onSubmit={onSubmit} className="space-y-4">
@@ -243,8 +270,8 @@ export default function Upload() {
       <PageCard className="mt-6 p-5 sm:p-6">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <h2 className="text-sm font-semibold text-white">업로드된 PDF 목록</h2>
-            <p className="mt-1 text-xs text-slate-400">현재 서버에 적재된 파일을 확인할 수 있습니다.</p>
+            <h2 className="text-sm font-semibold text-white">등록된 문서</h2>
+            <p className="mt-1 text-xs text-slate-400">현재 서버에 적재된 파일입니다. 같은 이름으로 다시 올리면 교체됩니다.</p>
           </div>
           <button
             type="button"
@@ -257,7 +284,7 @@ export default function Upload() {
         </div>
 
         {filesErr ? <p className="mt-3 text-sm text-rose-400">{filesErr}</p> : null}
-        {!filesErr && files.length === 0 ? <p className="mt-3 text-sm text-slate-500">아직 업로드된 파일이 없습니다.</p> : null}
+        {!filesErr && files.length === 0 ? <p className="mt-3 text-sm text-slate-500">아직 등록된 문서가 없습니다.</p> : null}
 
         {files.length > 0 ? (
           <ul className="mt-4 space-y-2">
@@ -266,8 +293,29 @@ export default function Upload() {
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
                     <p className="truncate text-sm font-medium text-white">{f.source}</p>
-                    <p className="mt-1 text-xs text-slate-400">청크 {f.chunkCount}개 · 최대 p.{f.maxPage || '-'} · {f.examType}</p>
+                    <p className="mt-1 text-xs text-slate-400">
+                      청크 {f.chunkCount}개 · {f.pageCount ? `${f.pageCount}페이지` : `최대 p.${f.maxPage || '-'}`} · {f.examType}
+                    </p>
+                    {f.pageAccurate === false ? (
+                      <p className="mt-1 text-xs text-amber-300">
+                        이전 방식으로 저장되어 페이지 번호가 실제와 다릅니다. 같은 파일을 다시 올리면 바로잡힙니다.
+                      </p>
+                    ) : null}
                   </div>
+                  <Link
+                    to={`/vector-debug?${new URLSearchParams({ source: f.source }).toString()}`}
+                    className="shrink-0 rounded-lg border border-slate-700 px-2.5 py-1 text-xs text-slate-300 transition hover:border-slate-500 hover:text-white"
+                  >
+                    청크 보기
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => onDelete(f.source)}
+                    disabled={deleting === f.source}
+                    className="shrink-0 rounded-lg border border-slate-700 px-2.5 py-1 text-xs text-slate-300 transition hover:border-rose-500/60 hover:text-rose-300 disabled:opacity-50"
+                  >
+                    {deleting === f.source ? '삭제 중…' : '삭제'}
+                  </button>
                 </div>
               </li>
             ))}

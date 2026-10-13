@@ -50,7 +50,9 @@ async function main() {
   const perQuery = [];
   for (const [i, item] of goldset.entries()) {
     const { query, source = '', relevantPages = [] } = item;
-    const retrieved = await retrieveChunks(query, MAX_K, source);
+    // 한글 파일명은 macOS(NFD)와 손으로 적은 골드셋(NFC)의 유니코드 정규화가 다를 수 있다.
+    // FastAPI 서버는 source 를 NFC 로 통일해 저장하므로 골드셋도 NFC 로 맞춘다.
+    const retrieved = await retrieveChunks(query, MAX_K, source.normalize('NFC'));
     const flags = relevanceFlags(retrieved, relevantPages);
 
     const row = { query, n: relevantPages.length };

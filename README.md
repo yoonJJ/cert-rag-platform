@@ -4,9 +4,8 @@
 
 [![React](https://img.shields.io/badge/React-19+-61DAFB?logo=react&logoColor=black)](https://react.dev/)
 [![Vite](https://img.shields.io/badge/Vite-8-646CFF?logo=vite&logoColor=white)](https://vitejs.dev/)
-[![Node.js](https://img.shields.io/badge/Node.js-Express-339933?logo=node.js&logoColor=white)](https://expressjs.com/)
+[![FastAPI](https://img.shields.io/badge/Python-FastAPI-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-pgvector-4169E1?logo=postgresql&logoColor=white)](https://github.com/pgvector/pgvector)
-[![Prisma](https://img.shields.io/badge/Prisma-ORM-2D3748?logo=prisma&logoColor=white)](https://www.prisma.io/)
 [![ChatGPT](https://img.shields.io/badge/OpenAI-ChatGPT-74aa9c?logo=openai&logoColor=white)](https://chatgpt.com/)
 [![Google Gemini](https://img.shields.io/badge/Google-Gemini-1A73E8?logo=googlegemini&logoColor=white)](https://ai.google.dev/)
 [![Claude](https://img.shields.io/badge/Anthropic-Claude-D97757?logo=claude&logoColor=white)](https://claude.ai/)
@@ -32,10 +31,10 @@
 
 - **프론트엔드**: React + Vite + Tailwind, 대시보드·업로드·퀴즈·시험·오답 노트·벡터 디버그 UI
 - **LLM UX**: 대시보드 **모델 드롭다운**, 전역 **`LlmStatusContext`** + 상단 **`LLM · 모델명`** pill(연결 상태 애니메이션)
-- **백엔드**: Express REST API, PDF 파싱·청킹, 임베딩 저장, 문제/시험/오답 CRUD, **`/api/settings/llm`**으로 런타임 채팅 모델 전환
+- **백엔드**: FastAPI REST API (Express에서 이전), PDF 파싱·청킹, 임베딩 저장, 문제/시험/오답 CRUD, **`/api/settings/llm`**으로 런타임 채팅 모델 전환
 - **AI 파이프라인**: OpenAI `text-embedding-3-small` 임베딩(768차원) + `<=>` 거리 기반 검색, **선택된 채팅 모델**로 JSON 구조화 문제 생성 및 재시도 파싱
 - **실시간 UX**: AI 튜터 **SSE(Server-Sent Events)** 스트리밍
-- **인프라**: Docker Compose로 PostgreSQL(pgvector)·Redis 구성, Prisma 마이그레이션·스키마 관리
+- **인프라**: Docker Compose로 PostgreSQL(pgvector)·Redis 구성, 기동 시 `schema.sql`로 스키마 자동 준비
 
 ---
 
@@ -44,16 +43,18 @@
 | 영역 | 설명 |
 |------|------|
 | **대시보드** | DB/LLM 헬스, **사용 중 LLM 카드 + 모델 선택**, 학습 소스·오답 요약 |
-| **PDF 업로드** | `pdf-parse`로 텍스트 추출 → 청크 분할 → 벡터 저장 (소스별 메타·토픽 추출 API) |
+| **문서** | PDF·이미지 업로드 → PyMuPDF로 페이지별 텍스트 추출 → 청크마다 **실제 페이지 번호**를 붙여 벡터 저장. 같은 이름은 교체, 같은 파일은 건너뜀, 문서 삭제 지원 |
 | **문제 풀기** | 업로드된 소스 선택 + 자연어 출제 지시 → 객관식 생성·진행·정답/해설·출처 표시 |
 | **시험 모드** | 제한 시간·채점, 시도별 이력·상세 저장 (`ExamAttempt` / `ExamAttemptItem`) |
 | **오답 노트** | 틀린 문항 저장·삭제, 동일 토픽 **유사 문제 재생성** |
 | **AI 튜터** | 선택한 오답 맥락으로 스트리밍 해설 |
-| **청크 뷰어** | 벡터 검색 디버그용 (`/api/vector/search` 등) |
+| **청크 뷰어** | 문서가 어떻게 잘려 저장됐는지 **페이지별로 묶어** 확인. 청크 펼쳐 보기·문서 내 검색(하이라이트)·글자 수 표시, `?source=` 링크로 바로 열기 |
+
+메뉴는 **학습**(대시보드·문제 풀기·시험·오답 노트)과 **지식베이스**(문서·청크 뷰어) 두 묶음으로 나뉩니다. 예전 주소 `/upload`는 `/documents`로 이동합니다.
 
 ### 주요 화면 스크린샷
 
-**PDF 업로드**
+**문서** (`/documents`)
 
 ![PDF 업로드 완료](./docs/screenshots/upload-success.png)
 ![업로드된 PDF 목록](./docs/screenshots/upload-list.png)
@@ -63,7 +64,7 @@
 ![문제 풀이 화면](./docs/screenshots/quiz-screen.png)
 ![AI 튜터 해설 화면](./docs/screenshots/tutor-screen.png)
 
-**청크/메타데이터 뷰어**
+**청크 뷰어** (`/vector-debug`)
 
 ![청크 메타데이터 뷰어](./docs/screenshots/vector-viewer.png)
 
@@ -88,10 +89,10 @@ flowchart TB
     LLMUI[LlmStatusContext + TopNav]
   end
   subgraph server [Server]
-    API[Express]
-    SET[settings.js: LLM 선택]
-    RAG[rag.js: embed / retrieve / generate]
-    LLM[llm.js: Chat Router - OpenAI Gemini Claude]
+    API[FastAPI]
+    SET[settings.py: LLM 선택]
+    RAG[rag.py: embed / retrieve / generate]
+    LLM[llm.py: Chat Router - OpenAI Gemini Claude]
   end
   subgraph data [Data]
     PG[(PostgreSQL + pgvector)]
@@ -123,11 +124,11 @@ flowchart TB
 | 구분 | 사용 기술 |
 |------|-----------|
 | Frontend | React, Vite, Tailwind CSS, React Router |
-| Backend | Node.js (ESM), Express, Multer |
-| DB / ORM | PostgreSQL, **pgvector**, Prisma |
+| Backend | Python 3.12, FastAPI, Uvicorn, asyncpg |
+| DB | PostgreSQL, **pgvector** (asyncpg + Raw SQL) |
 | AI | 채팅: **OpenAI / Gemini / Claude API** 선택, 임베딩: OpenAI `text-embedding-3-small`(768차원), OpenAI SDK + Anthropic API |
 | Infra | Docker Compose (Postgres, Redis) |
-| 기타 | SSE 스트리밍, `pdf-parse` |
+| 기타 | SSE 스트리밍(`StreamingResponse`), PyMuPDF(PDF 텍스트 추출·페이지 렌더링) |
 
 ---
 
@@ -174,10 +175,13 @@ AIProject/
 │  ├─ src/components/          # QuestionCard, TutorPanel, PageLayout, TopNav
 │  ├─ src/context/             # LlmStatusContext (전역 LLM 상태·폴링)
 │  └─ src/lib/api.js           # fetch 래퍼 + VITE_API_URL
-├─ server/
-│  ├─ index.js                 # Express, health, 라우터 마운트
-│  ├─ routes/                  # upload, questions, exam, tutor, wrong, settings
-│  ├─ services/                # llm, rag, chunker
+├─ server-py/                  # ★ 현재 백엔드 (FastAPI)
+│  ├─ app/main.py              # FastAPI 앱, health, 라우터 마운트
+│  ├─ app/routes/              # upload, questions, exam, tutor, wrong, settings
+│  ├─ app/services/            # llm, rag, chunker, pdf
+│  ├─ app/schema.sql           # 테이블·pgvector 스키마 (기동 시 IF NOT EXISTS 로 적용)
+│  └─ tests/                   # Node 버전과의 동작 비교 테스트
+├─ server/                     # 이전 백엔드 (Express + Prisma, 참고용) + eval/
 │  ├─ eval/                    # RAG 검색 품질 평가(IR 지표) + 골드셋
 │  └─ prisma/schema.prisma
 ├─ ppt/                        # (선택) 포트폴리오 HTML / PDF보내기 스크립트
@@ -188,12 +192,13 @@ AIProject/
 
 ## 데이터 모델 (요약)
 
-- **Chunk**: PDF 청크 + 임베딩(`vector(768)`) + 소스/페이지
+- **Document**: 업로드 1건 = 1행. 파일명(`source`, UNIQUE)·파일 해시·페이지 수·청크 수·캡션 여부·`pageAccurate`(이전 서버 데이터면 false)
+- **Chunk**: PDF 청크 + 임베딩(`vector(768)`) + 소스/실제 페이지, `documentId`로 Document에 소속 (문서 삭제 시 함께 삭제)
 - **Question**: 생성된 객관식 문제 영속화
 - **WrongAnswer**: 오답 노트 (복습·유사 문제 생성 입력)
 - **ExamAttempt / ExamAttemptItem**: 시험 회차·문항별 채점 스냅샷
 
-아래 다이어그램은 **Prisma 스키마**(`server/prisma/schema.prisma`)를 기준으로 했습니다. `Chunk.embedding`은 ORM에서 `Unsupported`로 두고 Raw SQL로 다룹니다.
+아래 다이어그램은 `server-py/app/schema.sql`을 기준으로 했습니다(서버 시작 시 멱등 실행). `Chunk.embedding`은 asyncpg Raw SQL로 다룹니다.
 
 ### 도메인 클래스 다이어그램 (ER / 클래스 관점)
 
@@ -201,13 +206,28 @@ AIProject/
 classDiagram
   direction TB
 
+  class Document {
+    +String id
+    +String source
+    +String fileHash
+    +String mimeType
+    +Int pageCount
+    +Int chunkCount
+    +Boolean imageCaptioned
+    +Boolean pageAccurate
+    +DateTime createdAt
+  }
+
   class Chunk {
     +String id
+    +String documentId
     +String content
     +String source
     +Int page
   }
-  note for Chunk "embedding: pgvector vector(768)\nPrisma Unsupported → $executeRaw"
+  note for Chunk "embedding: pgvector vector(768)\nasyncpg Raw SQL ($1::text::vector)"
+
+  Document "1" *-- "*" Chunk : chunks (onDelete Cascade)
 
   class Question {
     +String id
@@ -264,7 +284,7 @@ classDiagram
   ExamAttempt "1" *-- "*" ExamAttemptItem : items (onDelete Cascade)
 ```
 
-`Chunk`, `Question`, `WrongAnswer`는 스키마상 **서로 FK로 연결되지 않으며**, `source`·`topic` 등 문자열로 업무 맥락을 맞춥니다.
+`Document`–`Chunk` 외에 `Question`, `WrongAnswer`는 스키마상 **FK로 연결되지 않으며**, `source`·`topic` 등 문자열로 업무 맥락을 맞춥니다.
 
 ### 유스케이스 다이어그램
 
@@ -287,7 +307,7 @@ flowchart TB
     uc6([UC6: 오답 노트 관리])
     uc7([UC7: 유사 문제 재생성])
     uc8([UC8: AI 튜터 해설 - SSE 스트리밍])
-    uc9([UC9: 벡터·청크 검색 디버그])
+    uc9([UC9: 문서별 청크 확인·검색])
   end
 
   learner --> uc1
@@ -332,14 +352,14 @@ flowchart TB
 
 ### 사전 준비
 
-- Docker Desktop, Node.js 18+
+- Docker Desktop, Python 3.12+, Node.js 18+ (프론트엔드)
 - LLM API 키: **OpenAI / Gemini / Claude 중 채팅용 1개 이상**, 그리고 임베딩(RAG)용 **OpenAI 키**
 
 ```bash
 brew install --cask docker
 ```
 
-> OpenAI/Gemini/Claude 모델은 각각 `*_CHAT_MODELS` 환경변수로 목록을 커스터마이징할 수 있습니다. API 키는 `server/.env` 또는 대시보드 UI에서 입력합니다.
+> OpenAI/Gemini/Claude 모델은 각각 `*_CHAT_MODELS` 환경변수로 목록을 커스터마이징할 수 있습니다. API 키는 `server-py/.env` 또는 대시보드 UI에서 입력합니다.
 
 ### 인프라
 
@@ -351,11 +371,10 @@ docker compose up -d
 
 ### 환경 변수
 
-`server/.env` (템플릿은 `server/.env.example`):
+`server-py/.env` (템플릿은 `server-py/.env.example`):
 
 ```env
 DATABASE_URL="postgresql://user:password@localhost:5432/certdb"
-REDIS_URL="redis://localhost:6379"
 PORT=3001
 
 # 기본 선택 옵션 ID (형식: provider/model)
@@ -389,15 +408,15 @@ VITE_API_URL="http://localhost:3001"
 ### 설치 및 DB
 
 ```bash
-cd server && npm install && npx prisma migrate dev --name init && npx prisma generate
+cd server-py && python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
 cd ../client && npm install
 ```
 
 ### 실행
 
 ```bash
-# 터미널 1
-cd server && npm run dev
+# 터미널 1 (테이블·pgvector 확장은 기동 시 자동 생성)
+cd server-py && .venv/bin/uvicorn app.main:app --reload --port 3001
 
 # 터미널 2
 cd client && npm run dev
@@ -406,6 +425,7 @@ cd client && npm run dev
 - 앱: `http://localhost:5173`
 - Health: `http://localhost:3001/api/health`
 - 현재 LLM 설정 조회: `GET http://localhost:3001/api/settings/llm`
+- API 문서(Swagger): `http://localhost:3001/docs`
 
 ---
 
@@ -418,7 +438,7 @@ cd client && npm run dev
   - provider 키 저장: `{ "keyProvider": "openai|gemini|claude", "providerApiKey": "..." }`
   - provider 키 삭제: `{ "keyProvider": "openai|gemini|claude", "providerApiKey": "" }`
 
-**업로드·소스**: `POST /api/upload`, `GET /api/sources`, `GET /api/sources/stats`, `GET /api/sources/topics`, `GET /api/sources/metadata`, `GET /api/sources/chunks`
+**업로드·소스**: `POST /api/upload` (같은 이름이면 교체, 같은 파일이면 건너뜀), `DELETE /api/sources?source=`, `GET /api/sources`, `GET /api/sources/stats`, `GET /api/sources/topics`, `GET /api/sources/metadata`, `GET /api/sources/chunks?source=&q=&limit=&offset=` (문서 내 순번·전체 내용·글자 수·문서 정보 포함, `q`로 내용 검색)
 
 **문제·시험**: `POST /api/questions/generate`, `GET /api/vector/search`, `POST /api/exam/grade`, `GET /api/exam/attempts`, `GET /api/exam/attempts/:id`
 
@@ -433,9 +453,8 @@ docker compose up -d
 docker compose down
 docker compose down -v
 
-cd server
-npx prisma studio
-npx prisma migrate reset
+cd server-py
+.venv/bin/pip install pytest && .venv/bin/python -m pytest   # Node 버전과의 동작 비교 테스트
 ```
 
 ---

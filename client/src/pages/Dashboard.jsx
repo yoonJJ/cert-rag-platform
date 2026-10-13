@@ -371,8 +371,8 @@ export default function Dashboard() {
         <PageCard className="p-4 sm:p-5 xl:col-span-2">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="text-sm font-semibold text-white">최근 학습 소스</h2>
-            <NavLink to="/upload" className="text-xs font-medium text-accent hover:underline">
-              새 PDF 업로드
+            <NavLink to="/documents" className="text-xs font-medium text-accent hover:underline">
+              문서 추가
             </NavLink>
           </div>
           {filesErr ? <p className="mt-3 text-sm text-rose-400">{filesErr}</p> : null}
