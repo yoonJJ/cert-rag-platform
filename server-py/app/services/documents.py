@@ -4,7 +4,7 @@ import hashlib
 import uuid
 
 from app import db
-from app.services.rag import embed, vector_literal
+from app.services.rag import embed_many, vector_literal
 from app.utils import new_cuid, utcnow
 
 
@@ -16,11 +16,14 @@ async def find_by_source(source: str):
     return await db.pool().fetchrow('SELECT * FROM "Document" WHERE source = $1', source)
 
 
-async def embed_chunks(chunks: list[dict]) -> list[dict]:
-    """[{"content", "page"}] 에 임베딩을 붙여 돌려줍니다. DB 에는 아직 쓰지 않습니다."""
+async def embed_chunks(chunks: list[dict], batch_size: int = 50) -> list[dict]:
+    """[{"content", "page"}] 에 임베딩을 붙여 돌려줍니다. DB 에는 아직 쓰지 않습니다.
+    여러 청크를 한 요청으로 묶어 보내 무료 등급의 분당 요청 한도에 덜 걸리게 합니다."""
     out = []
-    for c in chunks:
-        out.append({**c, "vector": vector_literal(await embed(c["content"]))})
+    for i in range(0, len(chunks), batch_size):
+        batch = chunks[i : i + batch_size]
+        vectors = await embed_many([c["content"] for c in batch])
+        out += [{**c, "vector": vector_literal(v)} for c, v in zip(batch, vectors)]
     return out
 
 

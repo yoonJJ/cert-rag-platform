@@ -110,9 +110,14 @@ REASONING_EFFORT = "minimal"
 def get_embed_client() -> AsyncOpenAI:
     # 임베딩 제공자를 EMBED_BASE_URL 로 바꿔 끼울 수 있습니다(OpenAI 호환 엔드포인트).
     # 예: 로컬 Ollama nomic-embed-text → EMBED_BASE_URL=http://localhost:11434/v1
+    # 예: Gemini 무료 임베딩 → EMBED_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai/
+    #     EMBED_MODEL=gemini-embedding-001 (키는 EMBED_API_KEY 가 없으면 GEMINI_API_KEY 를 씁니다)
     base_url = str(os.getenv("EMBED_BASE_URL") or "").strip()
     if base_url:
-        return AsyncOpenAI(base_url=base_url, api_key=str(os.getenv("EMBED_API_KEY") or "ollama").strip())
+        key = str(os.getenv("EMBED_API_KEY") or "").strip()
+        if not key and "googleapis.com" in base_url:
+            key = _provider_api_keys["gemini"]
+        return AsyncOpenAI(base_url=base_url, api_key=key or "ollama")
     if not _provider_api_keys["openai"]:
         raise RuntimeError("임베딩을 위해 OpenAI API 키를 입력해 주세요.")
     return AsyncOpenAI(api_key=_provider_api_keys["openai"])

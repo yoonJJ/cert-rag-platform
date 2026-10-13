@@ -52,6 +52,24 @@
 
 메뉴는 **학습**(대시보드·문제 풀기·시험·오답 노트)과 **지식베이스**(문서·청크 뷰어) 두 묶음으로 나뉩니다. 예전 주소 `/upload`는 `/documents`로 이동합니다.
 
+### 고품질 문서 변환 (오프라인, 선택)
+
+PDF 텍스트 추출만으로는 이미지 속 표·R 출력 화면이 빠지고, 일부 폰트의 숫자·지수가 깨집니다(예: `PB(2⁵⁰)` → `PB(2`).
+`server-py/scripts/ingest.py`는 로컬에서 문서당 한 번 실행하는 변환 스크립트입니다.
+
+1. **Marker**로 제목·표 구조를 살린 페이지별 마크다운을 만들고
+2. 깨진 글자·큰 이미지·표가 있는 페이지만 골라 **Gemini Flash-Lite**에 [페이지 이미지 + 초안]을 보내 교정
+3. 초안 내용이 크게 사라진 교정 결과는 버림(지어낸 내용 방지), 결과는 파일 해시로 캐시
+4. `--upload`로 서버에 올리면 페이지 번호를 유지한 채 구조 기준으로 청킹·임베딩
+
+ADsP 요약노트(38쪽) 기준: 깨진 문자 485 → 0, 이미지 속 표·R 출력 복원, 약 3분, Gemini 무료 등급 안에서 처리.
+
+```bash
+cd server-py
+uv venv .venv-ingest && uv pip install -p .venv-ingest/bin/python -r scripts/requirements-ingest.txt
+GOOGLE_API_KEY=... .venv-ingest/bin/python scripts/ingest.py 교재.pdf -o ingest_out --upload http://localhost:3001
+```
+
 ### 주요 화면 스크린샷
 
 **문서** (`/documents`)
@@ -438,7 +456,7 @@ cd client && npm run dev
   - provider 키 저장: `{ "keyProvider": "openai|gemini|claude", "providerApiKey": "..." }`
   - provider 키 삭제: `{ "keyProvider": "openai|gemini|claude", "providerApiKey": "" }`
 
-**업로드·소스**: `POST /api/upload` (같은 이름이면 교체, 같은 파일이면 건너뜀), `DELETE /api/sources?source=`, `GET /api/sources`, `GET /api/sources/stats`, `GET /api/sources/topics`, `GET /api/sources/metadata`, `GET /api/sources/chunks?source=&q=&limit=&offset=` (문서 내 순번·전체 내용·글자 수·문서 정보 포함, `q`로 내용 검색)
+**업로드·소스**: `POST /api/upload` (같은 이름이면 교체, 같은 파일이면 건너뜀), `POST /api/upload-markdown` (`scripts/ingest.py`로 만든 `rag_markdown.md`를 원본 PDF 이름으로 업로드 → 제목·표 구조 기준 청킹), `DELETE /api/sources?source=`, `GET /api/sources`, `GET /api/sources/stats`, `GET /api/sources/topics`, `GET /api/sources/metadata`, `GET /api/sources/chunks?source=&q=&limit=&offset=` (문서 내 순번·전체 내용·글자 수·문서 정보 포함, `q`로 내용 검색)
 
 **문제·시험**: `POST /api/questions/generate`, `GET /api/vector/search`, `POST /api/exam/grade`, `GET /api/exam/attempts`, `GET /api/exam/attempts/:id`
 

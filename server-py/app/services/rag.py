@@ -1,4 +1,7 @@
+import asyncio
 import json
+
+from openai import RateLimitError
 
 from app import db
 from app.services.llm import EMBED_DIMENSIONS, EMBED_MODEL, create_chat_completion, get_embed_client
@@ -8,6 +11,27 @@ from app.utils import clamp, collapse_ws, fmt_num, js_number, num_or
 async def embed(text: str) -> list[float]:
     res = await get_embed_client().embeddings.create(model=EMBED_MODEL, input=text, dimensions=EMBED_DIMENSIONS)
     return res.data[0].embedding
+
+
+async def embed_many(texts: list[str], retries: int = 5) -> list[list[float]]:
+    """여러 텍스트를 한 요청으로 임베딩합니다. 분당 한도(429)에 걸리면 기다렸다 재시도합니다."""
+    for attempt in range(retries + 1):
+        try:
+            res = await get_embed_client().embeddings.create(
+                model=EMBED_MODEL, input=texts, dimensions=EMBED_DIMENSIONS
+            )
+            data = res.data
+            # Gemini 의 OpenAI 호환 응답은 index 를 비워 두고 입력 순서대로 돌려줍니다.
+            if all(d.index is not None for d in data):
+                data = sorted(data, key=lambda d: d.index)
+            if len(data) != len(texts):
+                raise RuntimeError(f"임베딩 개수가 맞지 않습니다 ({len(data)}/{len(texts)})")
+            return [d.embedding for d in data]
+        except RateLimitError:
+            if attempt == retries:
+                raise
+            await asyncio.sleep(15 * (attempt + 1))
+    return []
 
 
 def vector_literal(vec: list[float]) -> str:

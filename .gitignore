@@ -47,3 +47,7 @@ client/node_modules/.vite/
 
 # Prisma generated (if ever output outside node_modules)
 # server/node_modules/.prisma/ is under node_modules — already ignored
+
+# 오프라인 변환 결과물(scripts/ingest.py)
+ingest_out/
+.venv-ingest/
